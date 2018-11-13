@@ -1,0 +1,15 @@
+{
+  "N":15,
+  "L":16.0,
+  "xmin_t0":1.0,
+  "xmax_t0":6.0,
+  "model":"ftl_order_1",
+  "periodicity":true,
+  "tau":"",
+  "V_leader":"",
+  "speed_function":"0*(w<0.3) + (w>=0.3)*1.25*(1.0 - sp.exp(-(w-0.3)/0.9))",
+  "T":200.0,
+  "dt":0.01,
+  "prefix":"results/",
+  "drawper":200
+}

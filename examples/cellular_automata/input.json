@@ -1,0 +1,19 @@
+{
+  "name":"room_60x30",
+  "prefix":"results/",
+  "background":"",
+  "width":60,
+  "height":30,
+  "px":0.4,
+  "wall_lines":[ [[12.4,23.6,23.6,0,0,11.6],[0.4,0.4,12,12,0.4,0.4]] ],
+  "wall_ellipses":[ ],
+  "wall_polygons":[ ],
+  "door_lines":[ [[11.6,12.4],[0.4,0.4]] ],
+  "seed":20,
+  "Np":140,
+  "Tf":100.0,
+  "dt":0.005,
+  "drawper":1,
+  "update_strategy":"sequential",
+  "kappa":10.0
+}
