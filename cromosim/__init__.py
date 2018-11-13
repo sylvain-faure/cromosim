@@ -4,6 +4,7 @@
 #
 # License: GPL
 
+name = "cromosim"
 
 from .domain import Domain
 from . import ca

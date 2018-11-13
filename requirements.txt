@@ -1,11 +1,7 @@
-Python 3
-
-scipy>=0.19.1
-
-The image manipulation function scipy.misc required Pillow (https://python-pillow.org);
-Pillow>=1.1.7
-
-The skfmm module (https://github.com/scikit-fmm/scikit-fmm)
-scikit-fmm>=0.0.9
-
-matplotlib>=2.1.1
+numpy >=1.11.0
+scipy >=0.19.1
+Pillow >=1.1.7
+matplotlib >=2.1.1
+numpydoc >=0.7.0
+sphinx >=1.6.3
+scikit-fmm >=0.0.9

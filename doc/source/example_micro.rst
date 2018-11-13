@@ -1,6 +1,9 @@
 Make a microscopic simulation
 ===============================
 
+
+
+
 .. raw:: html
 
    <img src="_static/event.png" alt="Computational domain" style="margin:0px auto;display:block" width="50%" height="auto"/>
