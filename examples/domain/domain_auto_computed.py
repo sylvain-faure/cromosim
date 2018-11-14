@@ -3,7 +3,7 @@
 #     Bertrand Maury <bertrand.maury@math.u-psud.fr>
 #
 #     cromosim/examples/domain/domain_auto_computed.py
-#     python3 domain_auto_computed.py
+#     python domain_auto_computed.py
 #
 # License: GPL
 
@@ -13,7 +13,6 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse, Circle, Rectangle, Polygon, Arrow
 from matplotlib.patches import Circle
 from matplotlib.lines import Line2D
-matplotlib.use('Qt5Agg')
 
 ## Domain from a background image
 dom = Domain(name = 'room_400x300', background = 'room_400x300.png', pixel_size = 0.1)

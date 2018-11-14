@@ -1,5 +1,5 @@
 Build a domain
-==============
+===============
 
 A domain object contains:
 
@@ -8,8 +8,10 @@ A domain object contains:
 * a 2D array of the size of the image representing the nearest distance to the wall (black color). This means that each pixel in the image has its distance to the nearest wall.
 * a 2D array of the size of the image representing the distance to the nearest exit (red color). The opposite of the gradient of this distance represents the desired direction for an individual desiring to reach that outcome. This desired direction is also stored in an array.
 
+Reference : [MF2018]_ Chapter 8.
+
 Manually
---------
+---------
 
 An example can be find in the directory
 
@@ -58,7 +60,7 @@ and added to the domain object:
    </div>
 
 Automatically
------------
+--------------
 
 Starting from a background image drawn using three colors (red for the
 doors, black for the walls and white):

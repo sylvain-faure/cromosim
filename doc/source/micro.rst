@@ -1,19 +1,9 @@
-Micro
-=================
+Microscopic models : granular and social force model
+=====================================================
 
-blabla
+
 
 .. currentmodule:: cromosim.micro
-
-
-Social force model
-******************
-
-
-
-Granular model
-**************
-
 
 
 .. automodule:: cromosim.micro

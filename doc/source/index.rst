@@ -14,9 +14,11 @@ or using compartments), to test new configurations, and even to investigate the
 possibility to program their own model in complex geometry : do-it yourself !
 
 This package proposes Python implementations of the numerical methods detailed
-in the book "*Crowds in equations: an introduction to the microscopic modeling of
-crowds*" by  B. Maury (ENS Ulm & Univ. Paris-Sud) and S. Faure (CNRS), World
-Scientific 2018, Advanced textbooks in mathematics:
+in the following book:
+
+.. [MF2018] "*Crowds in equations: an introduction to the microscopic modeling of
+    crowds*" by  B. Maury (ENS Ulm & Univ. Paris-Sud) and S. Faure (CNRS), World
+    Scientific 2018, Advanced textbooks in mathematics.
 
 .. raw:: html
 

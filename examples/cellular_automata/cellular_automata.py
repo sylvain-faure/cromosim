@@ -3,7 +3,7 @@
 #     Bertrand Maury <bertrand.maury@math.u-psud.fr>
 #
 #      cromosim/examples/cellular_automata/cellular_automata.py
-#      python3 cellular_automata.py --json input.json
+#      python cellular_automata.py --json input.json
 #
 # License: GPL
 

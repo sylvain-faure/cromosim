@@ -3,7 +3,7 @@
 #     Bertrand Maury <bertrand.maury@math.u-psud.fr>
 #
 #      cromosim/examples/domain/domain_manually_computed.py
-#      python3 domain_manually_computed.py
+#      python domain_manually_computed.py
 #
 # License: GPL
 

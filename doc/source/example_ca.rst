@@ -9,6 +9,8 @@ most in each cell). In time: the evolution consists of a succession of steps,
 i.e. positions of particles are updated one after the other, in a stochastic
 manner.
 
+Reference : [MF2018]_ Chapter 5.
+
 A cellular automata example can be find in the directory
 
 .. code-block:: python3

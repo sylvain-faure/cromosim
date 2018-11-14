@@ -1,5 +1,5 @@
 Understand one-dimensional microscopic models : the Follow-the-Leader model
-====================================================
+============================================================================
 
 The Follow-the-Leader (FTL) model presented here is a one-dimensional
 microscopic model. Pedestrians are assumed to walk on a line toward a
@@ -15,6 +15,8 @@ model (an order :math:`2` version) which can be seen as a one-dimensional versio
 Force model with asymmetric forcing terms to account for the fact that
 pedestrians are influenced by their immediate neighbor in front of
 them.
+
+Reference : [MF2018]_ Chapter 2.
 
 Thanks to several json files given as inputs of the following script,
 we can combine periodic or non-periodic domain with inertial or

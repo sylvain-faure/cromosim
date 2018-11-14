@@ -3,7 +3,7 @@
 #     Bertrand Maury <bertrand.maury@math.u-psud.fr>
 #
 #      cromosim/examples/compartments/compartments.py
-#      python3 compartments.py --json input.json
+#      python compartments.py --json input.json
 #
 # License: GPL
 

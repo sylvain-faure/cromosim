@@ -1,7 +1,7 @@
 Compartments
 =================
 
-blabla
+
 
 .. currentmodule:: cromosim.comp
 

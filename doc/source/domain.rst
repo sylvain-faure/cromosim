@@ -1,5 +1,5 @@
-Build your domain
-=================
+Domain class used to build the computational domain
+====================================================
 
 .. currentmodule:: cromosim.domain.Domain
 

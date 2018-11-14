@@ -2,6 +2,9 @@
 #     Sylvain Faure <sylvain.faure@math.u-psud.fr>
 #     Bertrand Maury <bertrand.maury@math.u-psud.fr>
 #
+#      cromosim/examples/micro/social/micro_social.py
+#      python micro_social.py --json input.json
+#
 # License: GPL
 
 

@@ -3,7 +3,7 @@
 #     Bertrand Maury <bertrand.maury@math.u-psud.fr>
 #
 #     cromosim/examples/micro/granular/micro_granular.py
-#     python3 micro_granular.py --json input.json
+#     python micro_granular.py --json input.json
 #
 # License: GPL
 

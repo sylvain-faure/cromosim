@@ -3,7 +3,10 @@
 #     Bertrand Maury <bertrand.maury@math.u-psud.fr>
 #
 #     cromosim/examples/follow_the_leader/follow_the_leader.py
-#     python3 follow_the_leader.py --json input.json
+#     python follow_the_leader.py --json input_ftl_order1.json
+#     python follow_the_leader.py --json input_ftl_order1_periodic.json
+#     python follow_the_leader.py --json input_ftl_order2.json
+#     python follow_the_leader.py --json input_ftl_order2_periodic.json
 #
 # License: GPL
 
