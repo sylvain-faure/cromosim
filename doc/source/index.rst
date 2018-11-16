@@ -8,10 +8,10 @@ Welcome to cromosim's documentation!
 
 A Python Library for microscopic Crowd Motion Simulation.
 
-The aim of this open source project is to make it possible to users to run
-simulations based from several models (cellular automata, microscopic simulations
+The aim of this open source project is to allow users to run
+simulations based on several models (cellular automata, microscopic simulations
 or using compartments), to test new configurations, and even to investigate the
-possibility to program their own model in complex geometry : do-it yourself !
+possibility to program its own model in complex geometry : do-it yourself !
 
 This package proposes Python implementations of the numerical methods detailed
 in the following book:
@@ -19,11 +19,6 @@ in the following book:
 .. [MF2018] "*Crowds in equations: an introduction to the microscopic modeling of
     crowds*" by  B. Maury (ENS Ulm & Univ. Paris-Sud) and S. Faure (CNRS), World
     Scientific 2018, Advanced textbooks in mathematics.
-
-.. raw:: html
-
-   <img src="_static/book_cover.png" alt="Crowds in equations: an introduction to the microscopic modeling of
-   crowds" style="margin:0px auto;display:block" width="25%" height="auto"/>
 
 
 This documentation is hosted on a server of the Mathematics Department of Orsay
@@ -38,7 +33,7 @@ This documentation is hosted on a server of the Mathematics Department of Orsay
 
 .. currentmodule:: cromosim
 
-Github reposirory
+Github repository
 =================
 
 Download the source code and the examples here:

@@ -16,7 +16,7 @@ def iteration(it,Nrooms,DoorRoomCapacity,NPir,NPrir,NPwir,Nior,List_iOr,T_iOr,Fl
     """
         To run one iteration (which corresponds to 1 second) of the compartment \
         model. The compartments shall be identified to nodes of a network, those \
-        nodes are connected by edges, which corresponds to paths between nodesself.
+        nodes are connected by edges, which correspond to paths between nodesself.
 
     Parameters
     ----------
@@ -31,11 +31,11 @@ def iteration(it,Nrooms,DoorRoomCapacity,NPir,NPrir,NPwir,Nior,List_iOr,T_iOr,Fl
     NPrir: numpy array
         inlets for each room
     NPwir: numpy array
-        numbers of persons who's waiting to leave each room
+        numbers of persons who are waiting to leave each room
     Nior: numpy array
         numbers of inlets for each room
     List_iOr: numpy array
-        room numbers associate to the inlets for each room
+        room numbers associated to the inlets for each room
     T_iOr: numpy array
         travel times to cross each room
     Flux: numpy array
@@ -48,7 +48,7 @@ def iteration(it,Nrooms,DoorRoomCapacity,NPir,NPrir,NPwir,Nior,List_iOr,T_iOr,Fl
     NPir: numpy array
         new numbers of persons for each room
     NPwir: numpy array
-        new numbers of persons who's waiting to leave each room
+        new numbers of persons who are waiting to leave each room
     NPrir: numpy array
         new inlets for each room
     """
@@ -82,9 +82,9 @@ def plot_compt(ifig, RoomNames, RoomCenters, DoorCenters, CircAngles, NPir,
     RoomNames: list
         number of rooms
     RoomCenters: numpy array
-        coordinates of the centers of rooms
+        coordinates of the room centers
     DoorCenters: numpy array
-        coordinates of the centers of doors
+        coordinates of the door centers
     CircAngles: numpy array
         rotational angles of the half-disks localized at each door
     NPir: numpy array
@@ -92,11 +92,11 @@ def plot_compt(ifig, RoomNames, RoomCenters, DoorCenters, CircAngles, NPir,
     NPrir: numpy array
         inlets for each room
     NPwir: numpy array
-        numbers of persons who's waiting to leave each room
+        numbers of persons who are waiting to leave each room
     Nior: numpy array
         numbers of inlets for each room
     List_iOr: numpy array
-        room numbers associate to the inlets for each room
+        room numbers associated to the inlets for each room
     dom: Domain
         contains everything for managing the domain
     area: float
@@ -157,7 +157,7 @@ def plot_compt(ifig, RoomNames, RoomCenters, DoorCenters, CircAngles, NPir,
     ax0.set_xticks([])
     ax0.set_yticks([])
     ax0.axis('off')
-    ax0.set_title(title) 
+    ax0.set_title(title)
     plt.draw()
     if savefig:
         plt.savefig(filename, dpi=300)

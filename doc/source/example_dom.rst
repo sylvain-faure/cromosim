@@ -5,15 +5,15 @@ A domain object contains:
 
 * a geometry defined by a background image (completely white by
   default) and Matplotlib shapes that can be added (lines, circles, ellipses, rectangles or polygons). These elements are walls if they are black. To represent a door serving as an exit to the individuals that will be injected into the domain, a red line will be used.
-* a 2D array of the size of the image representing the nearest distance to the wall (black color). This means that each pixel in the image has its distance to the nearest wall.
-* a 2D array of the size of the image representing the distance to the nearest exit (red color). The opposite of the gradient of this distance represents the desired direction for an individual desiring to reach that outcome. This desired direction is also stored in an array.
+* a 2D array of the size of the image representing the distance to the nearest wall (black color). This means that each pixel in the image has its distance to the nearest wall.
+* a 2D array of the size of the image representing the distance to the nearest exit (red color). The opposite of the gradient of this distance represents the desired direction for an individual desiring to reach this outcome. This desired direction is also stored in an array.
 
 Reference : [MF2018]_ Chapter 8.
 
 Manually
 ---------
 
-An example can be find in the directory
+An example can be found in the directory
 
 .. code-block:: python3
 
@@ -25,10 +25,10 @@ and can be launched with
 
    python3 domain_manually_computed.py
 
-Manually means that from a completely white background image the
+Manually means that, from a completely white background image, the
 domain will be defined and drawn using Matplotlib shapes (Line2D,...). Hence, the
 first lines of the script build the boundary of the room (wall in black color) and
-the door (in red color):
+the doors (in red color):
 
 ..  literalinclude:: ../../examples/domain/domain_manually_computed.py
     :lines: 1-46
@@ -41,7 +41,7 @@ which gives the following domain:
    <br>
 
 
-Then the desired velocity and the wall distance can also be computed manually
+Then, the desired velocity and the wall distance can also be computed manually
 and added to the domain object:
 
 ..  literalinclude:: ../../examples/domain/domain_manually_computed.py

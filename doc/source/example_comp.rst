@@ -1,7 +1,8 @@
 Discover the compartment model
 ===============================
 
-The models presented in this chapter are fundamentally different from all other models in this book.
+The models presented in this chapter are fundamentally different from all the other
+models in this book.
 This class of model does not aim at computing positions and velocities,
 but rather at describing the evolution of total amounts of people in specified
 compartments. The compartments shall be identified to nodes of a network, those
@@ -9,7 +10,7 @@ nodes are connected by edges, which corresponds to paths between nodes.
 
 Reference : [MF2018]_ Chapter 6.
 
-A compartment model example can be find in the directory
+A compartment model example can be found in the directory
 
 .. code-block:: python3
 

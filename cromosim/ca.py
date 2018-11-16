@@ -19,7 +19,7 @@ def plot_people_according_to_current_door_distance(ifig, people, domain,
                                                    savefig=False,
                                                    filename='fig.png'):
     """
-    To draw occupied cells with colors depend to current door distances
+    To draw occupied cells with colors depending on current door distances
 
     Parameters
     ----------
@@ -69,7 +69,8 @@ def plot_people_according_to_initial_door_distance(ifig, people, domain, results
                                                    axis=None, savefig=False,
                                                    filename='fig.png'):
     """
-    To draw occupied cells with colors depend to initial (time=0) door distances
+    To draw occupied cells with colors depending on initial (time=0) door \
+    distances
 
     Parameters
     ----------
@@ -124,7 +125,7 @@ def plot_people_according_to_initial_door_distance(ifig, people, domain, results
 
 def compute_exit_times(dt, people, results):
     """
-    Compute exit times for all the individuals from the results array
+    To compute exit times for all the individuals from the results array
 
     Parameters
     ----------
@@ -152,7 +153,7 @@ def plot_people_according_to_exit_times(ifig, dt, people, domain, results,
                                         axis=None, savefig=False,
                                         filename='fig.png'):
     """
-    To draw occupied cells with colors depend to the exit times
+    To draw occupied cells with colors depending on the exit times
 
     Parameters
     ----------
@@ -310,11 +311,11 @@ def sequential_update(people, people_ij, weight, shuffle = None,
     people_ij: numpy array
         (i,j) for each individual
     weight: numpy array
-        weight for the probabilities in order to move in such a way like to \
+        weights for the probabilities in order to move in such a way like to \
         reach the door
     shuffle: string
         shuffle kind ('random' or 'random_frozen'): if the sequential order \
-        change or not at each time
+        changes or not at each time
     randomstate: numpy randomstate
         create a new one or reuse the given random state
 
@@ -322,7 +323,7 @@ def sequential_update(people, people_ij, weight, shuffle = None,
     -------
 
     people: numpy masked arrays
-        new positions equal to 1 if the cell (i,j) is occupied, 0 elsewhere
+        new positions equal to 1 if the cell (i,j) is occupied, 0 otherwise
     people_id: numpy masked arrays
         new people index (i,j)
     """
@@ -387,7 +388,7 @@ def parallel_update(people, people_ij, weight, friction = 0, randomstate = None)
     people_ij: numpy array
         (i,j) for each individual
     weight: numpy array
-        weight for the probabilities in order to move in such a way like to \
+        weights for the probabilities in order to move in such a way like to \
         reach the door
     friction: float
         to designate the effect induced by a modified handling of conflicts, \
@@ -471,8 +472,8 @@ def parallel_update(people, people_ij, weight, friction = 0, randomstate = None)
 
 def exit(domain, people, people_ij):
     """
-    To update people and people_ij arrays in removing individuals who have \
-    leaved the domain
+    To update people and people_ij arrays in removing individuals who \
+    left the domain
 
     Parameters
     ----------

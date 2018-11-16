@@ -195,10 +195,10 @@ def compute_forces(F, Fwall, people, contacts, U, Vd, lambda_, delta, k, eta):
 def projection_uzawa(dt, people, contacts, Vd, dmin = 0.0, \
                      nb_iter_max = 100000, rho=0.1, tol = 0.01, log=False):
     """
-    From the desired velocities Vd, this projection step consists to compute \
-    the global velocity field which shall be defined as the closest to the \
-    desired one among all those feasible fields (i.e. fields which do not lead \
-    to overlapping of disks).
+    From the desired velocities Vd, this projection step consists of computing \
+    the global velocity field defined as the closest velocity to the \
+    desired one among all the feasible fields (i.e. fields which do not lead \
+    to disks overlapping).
 
     Parameters
     ----------
@@ -219,14 +219,14 @@ def projection_uzawa(dt, people, contacts, Vd, dmin = 0.0, \
     tol: float
         tolerance wished
     log: boolean
-        to print the final accurancy, number of iterations,...
+        to print the final accuracy, number of iterations,...
 
     Returns
     -------
     B: numpy array
         constraint matrix
     U: numpy array
-        new people velocities ensuring there is no overlap \
+        new people velocities ensuring that there is no overlap \
         between individuals
     L: numpy array
         Lagrange multipliers
@@ -290,7 +290,7 @@ def projection_uzawa(dt, people, contacts, Vd, dmin = 0.0, \
 def move_people(time, dt, people, U, crosslines=[]):
     """
     Updates the people positions according to the new velocities U. \
-    If there exits crosslines (i.e. sensors), computes also the id, time, direction and \
+    If there exists crosslines (i.e. sensors), computes also the id, time, direction and \
     impact points for the individuals who cross the lines.
 
     Parameters
@@ -524,10 +524,10 @@ def periodic_bc_vertical(ymin, ymax, people, U, xmin=None, xmax=None, rng=None):
 
 def create_people_in_box(np, box, rmin, rmax, dom, rng):
     """
-    To create np persons in a given box. The overvalps are not treated for \
-    the moment but we check that the individuals are located in an area where \
+    To create np persons in a given box. The overlaps are not treated for \
+    the moment but one checks that the individuals are located in an area where \
     the desired velocity is well defined (outside inaccessible areas or \
-    obstacles). If it is not the case, we change their coordinates in consequence.
+    obstacles). If it is not the case, one changes their coordinates in consequence.
 
     Parameters
     ----------
@@ -550,7 +550,7 @@ def create_people_in_box(np, box, rmin, rmax, dom, rng):
         new people coordinates x y r
     """
     print("------ create_people_in_box --> Create "+str(np)+ \
-          " individuals in the box "+str(box)+", overlaps can be occured...")
+          " individuals in the box "+str(box)+", overlaps can occur...")
     p = sp.zeros((np,3))  # x y r
     p[:,2] = rng.uniform(rmin, rmax, np)
     p_rmax = p[:,2].max()
@@ -575,7 +575,7 @@ def check_people_in_box(dom, box, p, rng):
     """
     To check that people coordinates are in the given box (test 1) and in an \
     usable space i.e. in an area accessible and not concerned by obstacles \
-    (test 2). On the other hand, we move the individual which do not satisfy \
+    (test 2). On the other hand, one moves the individuals which do not satisfy \
     these two tests.
 
     Parameters
@@ -636,7 +636,7 @@ def remove_overlaps_in_box(dom, box, p, dt, rng, dmin, itermax=10):
     """
     To remove the overlaps between individuals (spheres) in the given box. \
     Several Uzawa projections are used to give a better robustness to this \
-    process when the number of overlaps is very high like during the \
+    process when the number of overlaps is very high e.g. during the \
     initialization when the individuals have random positions.
 
     Parameters
@@ -730,7 +730,7 @@ def people_initialization(N, init_people_box, dom, dt, rmin, rmax, dmin=0,
         rng = sp.random.RandomState(seed)
     print("=================> INITIALIZATION : SEED = ",rng.get_state()[1][0])
     ## People properties : radius and initial random coordinates
-    ## overlaps can be occured...
+    ## overlaps can occur...
     people = sp.zeros((N.sum(),3))  # x y r
     people_init_box_id = sp.zeros((N.sum(),),dtype=int)
     pos = 0
@@ -848,7 +848,7 @@ def sensor(door, xy0, xy1, t0, t1):
 def add_people_in_box(Np, dom, xmin, xmax, ymin, ymax, rmin, rmax, rng):
     """
     Adds new persons in the box [xmin,xmax]x[ymin,ymax]
-    Be careful : overlaps can be occured...
+    Be careful : overlaps can occur...
 
     Parameters
     ----------

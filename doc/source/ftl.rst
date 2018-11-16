@@ -1,4 +1,4 @@
-Module for the Follow the Leader model
+Module for the Follow-the-Leader model
 =======================================
 
 

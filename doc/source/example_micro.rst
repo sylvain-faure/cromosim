@@ -2,14 +2,14 @@ Make a microscopic simulation
 ===============================
 
 In the two following models, individuals are seen as spherical particles. They
-move at a desired velocity to reach a goal (typically a door). Doing nothing
-more would lead to many overlaps between individuals hence the two families of
+move at a desired velocity to reach a goal (typically a door). Doing nothing more
+would lead to many overlaps between individuals. Hence the two families of
 models below can prevent these overlaps through two different approaches. For
-the Social Force models some forces are added to act against overlaps, and for
+the Social Force models, and, for some forces are added to act against overlaps, and for
 the Granular model the velocities are projected into a permissible velocity
 space which ensures the absence of overlaps.
 
-The domain used for both models is obtained in using the following background
+The domain used for both models is obtained by using the following background
 image:
 
 .. raw:: html
@@ -23,15 +23,15 @@ image:
 Social force model
 -------------------
 
-The Social Force model introduced in the 90’s. Pedestrians are identified
-with inertial particles, submitted to a forcing term which implements the
-individual tendencies, and extra forces which account for interactions with
+The Social Force model has been introduced in the 90’s. Pedestrians are identified
+with inertial particles submitted to a forcing term which implements the
+individual tendencies and extra forces which account for interactions with
 other pedestrians (typically the tendency to preserve a certain distance
 with neighbors).
 
 Reference : [MF2018]_ Chapter 3.
 
-An example can be find in the directory
+An example can be found in the directory
 
 .. code-block:: python3
 

@@ -10,9 +10,9 @@ We consider :math:`N+1` individuals walking on a straight line in a
 non-periodic case or in a periodic case which means that the
 individual :math:`N+1` is identified to the individual :math:`1`.
 
-We can also declined an inertial version of the Follow-the-Leader
+We can also consider an inertial version of the Follow-the-Leader
 model (an order :math:`2` version) which can be seen as a one-dimensional version of the Social
-Force model with asymmetric forcing terms to account for the fact that
+Force model with asymmetric forcing terms to take into account that
 pedestrians are influenced by their immediate neighbor in front of
 them.
 

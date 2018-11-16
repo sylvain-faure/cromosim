@@ -153,7 +153,7 @@ class Domain():
 
     def add_door(self, shape):
         """
-        To add a door represented by a matplotlib shapes : \
+        To add a door represented by matplotlib shapes : \
         line2D (only)
 
         Parameters
