@@ -6,7 +6,8 @@
 import sys
 import scipy as sp
 from scipy.misc import imread
-from scipy.spatial import KDTree
+#from scipy.spatial import KDTree
+from scipy.spatial import cKDTree
 from scipy.sparse import csr_matrix
 import matplotlib
 import matplotlib.pyplot as plt
@@ -43,41 +44,39 @@ def compute_contacts(dom, people, dmax):
     lf = 100
     if (lf>sys.getrecursionlimit()):
         sys.setrecursionlimit(lf)
-    kd = KDTree(people[:,:2],leafsize = lf)
+    kd = cKDTree(people[:,:2],leafsize = lf)
     ## Find all pairs of points whose distance is at most dmax+2*rmax
     rmax = people[:,2].max()
     neighbors = kd.query_ball_tree(kd,dmax+2*rmax)
-    # ## OR
-    # ## Query the kd-tree for k=10 nearest neighbors
-    # neighbors = []
-    # for xy in people[:,:2]:
-    #     #print(xy)
-    #     v = kd.query(xy,k=10)
-    #     neighbors.append(v[1])
-    contacts = []
-    for i,l in enumerate(neighbors):
-        for j in l:
-            dij = sp.sqrt( (people[j,0]-people[i,0])**2+(people[j,1]-people[i,1])**2 ) - people[i,2]-people[j,2]
-            # i<j : to avoid duplication
-            # dij<dmax : according to the threshold value
-            if ((i<j)and(dij<dmax)):
-                eij_x = people[j,0]-people[i,0]
-                eij_y = people[j,1]-people[i,1]
-                norm = sp.sqrt( eij_x**2 + eij_y**2)
-                eij_x /= norm; eij_y /= norm
-                # Add a new contact
-                contacts.append([i,j,dij,eij_x,eij_y])
+    ## Create the contact array : i,j,dij,eij_x,eij_y
+    first_elements = sp.arange(people.shape[0]) ## i.e. i
+    other_elements = list(map(lambda x: x[1:], neighbors)) ## i.e. all the j values for each i
+    lengths = list(map(len, other_elements))
+    tt = sp.stack([first_elements,lengths],axis=1)
+    I = sp.concatenate(list(map(lambda x: sp.full((x[1],), x[0]), tt))).astype(int)
+    J = sp.concatenate(other_elements).astype(int)
+    ind = sp.where(I<J)[0]
+    I = I[ind] ; J = J[ind]
+    DP = people[J,:2]-people[I,:2]
+    Norm = sp.linalg.norm(DP,axis=1,ord=2)
+    Dij = Norm - people[I,2]-people[J,2]
+    ind = sp.where(Dij<dmax)[0]
+    Dij = Dij[ind]
+    I = I[ind]
+    J = J[ind]
+    Norm = Norm[ind]
+    DP = DP[ind]
+    contacts = sp.stack([I,J,Dij,DP[:,0]/Norm,DP[:,1]/Norm],axis=1)
     # Add contacts with the walls
-    I = sp.floor((people[:,1]-dom.ymin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
-    J = sp.floor((people[:,0]-dom.xmin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
-    D = dom.wall_distance[I,J]
-    ind = sp.where(D<dmax+rmax)
-    for i in ind[0]:
-        if (D[i]-people[i,2]<dmax):
-            contacts.append([i,-1,D[i]-people[i,2],dom.wall_grad_X[I[i],J[i]],
-                             dom.wall_grad_Y[I[i],J[i]]])
+    II = sp.floor((people[:,1]-dom.ymin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
+    JJ = sp.floor((people[:,0]-dom.xmin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
+    DD = dom.wall_distance[II,JJ] - people[:,2]
+    ind = sp.where(DD<dmax)[0]
+    wall_contacts = sp.stack([ind,-1*sp.ones(ind.shape),DD[ind],
+                              dom.wall_grad_X[II[ind],JJ[ind]],
+                              dom.wall_grad_Y[II[ind],JJ[ind]]  ],axis=1)
+    contacts = sp.vstack([contacts,wall_contacts])
     return sp.array(contacts)
-
 
 def compute_desired_velocity(dom, people):
     """
@@ -192,8 +191,8 @@ def compute_forces(F, Fwall, people, contacts, U, Vd, lambda_, delta, k, eta):
     return Forces
 
 
-def projection_uzawa(dt, people, contacts, Vd, dmin = 0.0, \
-                     nb_iter_max = 100000, rho=0.1, tol = 0.01, log=False):
+def projection(dt, people, contacts, Vd, dmin = 0.0, \
+               nb_iter_max = 100000, rho=0.1, tol = 0.01, log=False, method="cvxopt"):
     """
     From the desired velocities Vd, this projection step consists of computing \
     the global velocity field defined as the closest velocity to the \
@@ -220,6 +219,9 @@ def projection_uzawa(dt, people, contacts, Vd, dmin = 0.0, \
         tolerance wished
     log: boolean
         to print the final accuracy, number of iterations,...
+    method: string
+        optimization algorithm : 'cvxopt' (default) or 'uzawa' (or 'mosek' if installed \
+        with a license file).
 
     Returns
     -------
@@ -229,62 +231,115 @@ def projection_uzawa(dt, people, contacts, Vd, dmin = 0.0, \
         new people velocities ensuring that there is no overlap \
         between individuals
     L: numpy array
-        Lagrange multipliers
+        Lagrange multipliers (only when method='uzawa', None otherwise)
     P: numpy array
-        pressure on each individual
+        pressure on each individual (only when method='uzawa', None otherwise)
     info: integer
         number of iterations needed
     """
-    info = 0
-    row = []; col = []; data = []
     Np = people.shape[0]
     Nc = contacts.shape[0]
+    info = 0
     if (Nc == 0):
         info = 1
         return info, None, Vd, None, None
-    for ic in sp.arange(Nc):
-        i = int(contacts[ic,0])
-        j = int(contacts[ic,1])
-        if (j>=0):
-            row.append(ic); col.append(2*i); data.append(contacts[ic,3])
-            row.append(ic); col.append(2*i+1); data.append(contacts[ic,4])
-            row.append(ic); col.append(2*j); data.append(-contacts[ic,3])
-            row.append(ic); col.append(2*j+1); data.append(-contacts[ic,4])
-        else:
-            row.append(ic); col.append(2*i); data.append(-contacts[ic,3])
-            row.append(ic); col.append(2*i+1); data.append(-contacts[ic,4])
-    B = csr_matrix((data, (row, col)), shape=(Nc, 2*Np))#.toarray()
-    L = sp.zeros((Nc,))
-    R = 99*sp.ones((Nc,))
-    U = sp.zeros((2*Np,))
-    V = sp.zeros((2*Np,))
-    D = contacts[:,2]
-    V[::2] = Vd[:,0]; V[1::2] = Vd[:,1]
-    k = 0
-    while (( dt*R.max()>tol*2*people[:,2].min()) and (k<nb_iter_max)):
-        U[:] = V[:] - B.transpose()@L[:]
-        R[:] = B@U[:] - (D[:]-dmin)/dt
-        L[:] = sp.maximum(L[:] + rho*R[:], 0)
-        k += 1
-    P = sp.zeros(Np) ## Pressure
-    for ic in sp.arange(Nc):
-        i = int(contacts[ic,0]) # contacts : [i,j,dij,eij_x,eij_y]
-        j = int(contacts[ic,1])
-        if (j>=0):
-            P[i] += 3/(4*sp.pi*people[i,2]**2)*L[ic] ## Equiplanar spheres
-            P[j] += 3/(4*sp.pi*people[j,2]**2)*L[ic]
-        else:
-            P[i] += 3/(4*sp.pi*people[i,2]**2)*L[ic]
-    if log:
-        print("    projection_uzawa : nb of contacts = ",Nc,", nb of iterations = ",k,", min = ",R.min(),", max = ",R.max(),", tol = ",tol)
-    if (k==nb_iter_max):
-        print("** WARNING : Method projection_uzawa **")
-        print("** WARNING : you have reached the maximum number of iterations,")
-        print("** WARNING : it remains unsatisfied constraints !! ")
-        info = -1
     else:
-        info = k
-    return info, B, U.reshape((Np, 2)), L, P
+
+        if (method == "cvxopt") or (method == "mosek"):
+
+            import cvxopt
+            cvxopt.solvers.options['show_progress'] = False
+            cvxopt.solvers.maxiters = 1000
+            cvxopt.solvers.abstol = 1e-8
+            cvxopt.solvers.reltol = 1e-7
+            L = None
+            P = None
+            U = sp.zeros((2*Np,))
+            V = sp.zeros((2*Np,))
+            Z = (contacts[:,2]-dmin)/dt ## ie Dij/dt
+            V[::2] = Vd[:,0]; V[1::2] = Vd[:,1] ## A priori velocity
+            V = cvxopt.matrix(V)
+            Z = cvxopt.matrix(Z, (Nc,1))
+            Id = cvxopt.spdiag([1]*(U.shape[0]))
+            if (Nc>0):
+                II = contacts[:,0].astype(int)
+                JJ = contacts[:,1].astype(int)
+                Jpos = sp.where(JJ>=0)[0]
+                Jneg = sp.where(JJ<0)[0]
+                row = sp.concatenate([Jpos, Jpos, Jpos, Jpos, Jneg, Jneg])
+                col = sp.concatenate([2*II[Jpos], 2*II[Jpos]+1,
+                                      2*JJ[Jpos], 2*JJ[Jpos]+1,
+                                      2*II[Jneg], 2*II[Jneg]+1])
+                data = sp.concatenate([contacts[Jpos,3], contacts[Jpos,4],
+                                       -contacts[Jpos,3], -contacts[Jpos,4],
+                                       -contacts[Jneg,3], -contacts[Jneg,4]])
+                B = csr_matrix((data, (row, col)), shape=(Nc, 2*Np))#.toarray()
+                cvxoptB = cvxopt.spmatrix(sp.array(data),sp.array(row),
+                                          sp.array(col),size=(Nc, 2*Np))
+                if (method == "mosek"):
+                    from mosek import iparam
+                    cvxopt.solvers.options['mosek'] = {iparam.log: 0}
+                    solution = cvxopt.solvers.qp(Id, -V, cvxoptB, Z, solver='mosek')
+                else:
+                    solution = cvxopt.solvers.qp(Id, -V, cvxoptB, Z)
+                    info = solution["iterations"]
+            U = solution['x']
+            if log:
+                C = Z - B@U
+                if (method == "mosek"):
+                    print("    projection (mosek) : nb of contacts = ",Nc,
+                          ", contrainte (Z-B@U).min() = ",C.min())
+                else:
+                    print("    projection (cvxopt) : nb of contacts = ",Nc,
+                          ", nb of iterations = ",solution["iterations"],
+                          ", status = ",solution["status"],
+                          ", contrainte (Z-B@U).min() = ",C.min())
+            U = sp.array(U).reshape((Np, 2))
+
+        elif (method=="uzawa"):
+
+            info = 0
+            II = contacts[:,0].astype(int)
+            JJ = contacts[:,1].astype(int)
+            Jpos = sp.where(JJ>=0)[0]
+            Jneg = sp.where(JJ<0)[0]
+            row = sp.concatenate([Jpos, Jpos, Jpos, Jpos, Jneg, Jneg])
+            col = sp.concatenate([2*II[Jpos], 2*II[Jpos]+1,
+                                  2*JJ[Jpos], 2*JJ[Jpos]+1,
+                                  2*II[Jneg], 2*II[Jneg]+1])
+            data = sp.concatenate([contacts[Jpos,3], contacts[Jpos,4],
+                                   -contacts[Jpos,3], -contacts[Jpos,4],
+                                   -contacts[Jneg,3], -contacts[Jneg,4]])
+            B = csr_matrix((data, (row, col)), shape=(Nc, 2*Np))#.toarray()
+            L = sp.zeros((Nc,))
+            R = 99*sp.ones((Nc,))
+            U = sp.zeros((2*Np,))
+            V = sp.zeros((2*Np,))
+            D = contacts[:,2]
+            V[::2] = Vd[:,0]; V[1::2] = Vd[:,1]
+            k = 0
+            while (( dt*R.max()>tol*2*people[:,2].min()) and (k<nb_iter_max)):
+                U[:] = V[:] - B.transpose()@L[:]
+                R[:] = B@U[:] - (D[:]-dmin)/dt
+                L[:] = sp.maximum(L[:] + rho*R[:], 0)
+                k += 1
+            P = sp.zeros(Np) ## Pressure
+            P[II[Jpos]] +=  3/(4*sp.pi*people[II[Jpos],2]**2)*L[Jpos]
+            P[JJ[Jpos]] +=  3/(4*sp.pi*people[JJ[Jpos],2]**2)*L[Jpos]
+            P[II[Jneg]] +=  3/(4*sp.pi*people[II[Jneg],2]**2)*L[Jneg]
+            if log:
+                print("    projection (uzawa) : nb of contacts = ",Nc,
+                      ", nb of iterations = ",k,", min = ",R.min(),
+                      ", max = ",R.max(),", tol = ",tol)
+            if (k==nb_iter_max):
+                print("** WARNING : Method projection **")
+                print("** WARNING : you have reached the maximum number of iterations,")
+                print("** WARNING : it remains unsatisfied constraints !! ")
+                info = -1
+            else:
+                info = k
+
+        return info, B, U.reshape((Np, 2)), L, P
 
 
 def move_people(time, dt, people, U, crosslines=[]):
@@ -671,7 +726,7 @@ def remove_overlaps_in_box(dom, box, p, dt, rng, dmin, itermax=10):
               str(box)+": iteration "+str(it1)+" / "+str(itermax))
         c = compute_contacts(dom, p, dmax_init)
         I, J, Vd = compute_desired_velocity(dom, p)
-        info1, B, U, L, P = projection_uzawa(dt, p, c, Vd, dmin = dmin, \
+        info1, B, U, L, P = projection(dt, p, c, Vd, dmin = dmin, \
                                              nb_iter_max = 10000, log = False)
         p = move_people(t, dt, p, U)
         it1 += 1
@@ -842,7 +897,8 @@ def sensor(door, xy0, xy1, t0, t1):
     # Compute the intersection time
     norm_vtraj = sp.sqrt(norm_vtraj_2)
     dt = t1-t0
-    times = t0 + (is_normal_dir==True)*(norm_vpxy0_2*dt/norm_vtraj) + (is_normal_dir==False)*(norm_vpxy1_2*dt/norm_vtraj)
+    times = t0 + (is_normal_dir==True)*(norm_vpxy0_2*dt/norm_vtraj) + \
+            (is_normal_dir==False)*(norm_vpxy1_2*dt/norm_vtraj)
     return id, p[id,:], io, times[id], entries, exits
 
 def add_people_in_box(Np, dom, xmin, xmax, ymin, ymax, rmin, rmax, rng):

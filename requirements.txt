@@ -5,3 +5,4 @@ matplotlib >=2.1.1
 numpydoc >=0.7.0
 sphinx >=1.6.3
 scikit-fmm >=0.0.9
+cvxopt >= 1.2.3

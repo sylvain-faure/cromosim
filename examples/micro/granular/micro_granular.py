@@ -215,7 +215,7 @@ while (t<Tf):
         #                 filename=prefix+'sensor_'+str(i)+'_'+str(counter)+'.png')
         #         plt.pause(0.01)
         cc = 0
-    info, B, U, L, P = projection_uzawa(dt, people, contacts, Vd, dmin = dmin)
+    info, B, U, L, P = projection(dt, people, contacts, Vd, dmin = dmin)
     if (len(sensors)>0):
         people, io_id, io_times, io_dir, io_pts = move_people(t, dt, people, U,
                                                               crosslines=sensors)
