@@ -5,7 +5,7 @@
 
 import sys
 import scipy as sp
-from scipy.misc import imread
+from imageio import imread
 #from scipy.spatial import KDTree
 from scipy.spatial import cKDTree
 from scipy.sparse import csr_matrix

@@ -4,7 +4,7 @@
 # License: GPL
 
 import scipy as sp
-from scipy.misc import imread
+from imageio import imread
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse, Circle, Rectangle, Polygon
