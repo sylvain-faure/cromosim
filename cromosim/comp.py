@@ -5,7 +5,11 @@
 
 import sys
 import scipy as sp
-from scipy.misc import imread
+import numpy as np
+try:
+    from scipy.misc import imread
+except:
+    from imageio import imread
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -52,19 +56,19 @@ def iteration(it,Nrooms,DoorRoomCapacity,NPir,NPrir,NPwir,Nior,List_iOr,T_iOr,Fl
     NPrir: numpy array
         new inlets for each room
     """
-    for ir in sp.arange(Nrooms):
+    for ir in np.arange(Nrooms):
         Flux[it,ir]=min(DoorRoomCapacity[ir],NPwir[it-1,ir])
 
-    for ir in sp.arange(Nrooms):
+    for ir in np.arange(Nrooms):
         NPir[it,ir]  =  NPir[it-1,ir]-Flux[it,ir]
         NPwir[it,ir] =  NPwir[it-1,ir]-Flux[it,ir]
-        for k in sp.arange(Nior[ir]):
+        for k in np.arange(Nior[ir]):
             NPir[it,ir] += Flux[it,int(List_iOr[ir,k])]
             timelag = int(T_iOr[ir,k])
             if timelag < it :
                 NPwir[it,ir]+=Flux[it-timelag,int(List_iOr[ir,k])]
             NPrir[ir,k] = 0
-            for i in sp.arange(min(it,timelag)):
+            for i in np.arange(min(it,timelag)):
                 NPrir[ir,k] += Flux[it-i,int(List_iOr[ir,k])]
     return Flux,NPir,NPwir,NPrir
 
@@ -118,7 +122,7 @@ def plot_compt(ifig, RoomNames, RoomCenters, DoorCenters, CircAngles, NPir,
     circles0 = [];
     colors0 = [];
     m2 = NPir*area ## surface demi-cercle = pi*R^2/2 = m2 => R = sqrt(2*m2/pi)
-    R = sp.sqrt(2*m2/sp.pi)
+    R = np.sqrt(2*m2/np.pi)
     scale = 1
     for id,name in enumerate(RoomNames):
         wedge = Wedge((DoorCenters[id,0], DoorCenters[id,1]), R[id],
@@ -131,28 +135,28 @@ def plot_compt(ifig, RoomNames, RoomCenters, DoorCenters, CircAngles, NPir,
         #                             angle=CircAngles[id], color='k')
         #circles0.append(arc)
         colors0.append(0.0)
-    for ir in sp.arange(Nr):
-        for id in sp.arange(Nior[ir]):
+    for ir in np.arange(Nr):
+        for id in np.arange(Nior[ir]):
             jr = List_iOr[ir,id]
             xx0 = DoorCenters[ir,0]
             yy0 = DoorCenters[ir,1]
             xx1 = DoorCenters[jr,0]
             yy1 = DoorCenters[jr,1]
             ## line : [xx0, yy0, xx1, yy1]
-            len = sp.sqrt( (xx0-xx1)**2+(yy0-yy1)**2 )
+            len = np.sqrt( (xx0-xx1)**2+(yy0-yy1)**2 )
             s = 0.5*NPrir[ir,id]*area/len
-            circles0.append(Polygon( sp.array([[xx0-s,yy0],[xx0+s,yy0], \
+            circles0.append(Polygon( np.array([[xx0-s,yy0],[xx0+s,yy0], \
                                                [xx1+s,yy1],[xx1-s,yy1]]), \
                                      closed=True, fill=True))
             colors0.append(1.0)
     # for line in Lines:
     #     ##l : [xx0, yy0, xx1, yy1]
     #     s = l[]
-    #     circles0.append(Polygon(sp.array([[],[]]), True)
+    #     circles0.append(Polygon(np.array([[],[]]), True)
 
     patches0 = PatchCollection(circles0, cmap=matplotlib.cm.prism, alpha=0.6,
                                linewidth=0)
-    patches0.set_array(sp.array(colors0))
+    patches0.set_array(np.array(colors0))
     ax0.add_collection(patches0)
     ax0.set_xticks([])
     ax0.set_yticks([])

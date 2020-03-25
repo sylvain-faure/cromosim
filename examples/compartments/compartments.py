@@ -78,12 +78,12 @@ seed = input["seed"]
 Np_rooms = input["Np_rooms"]
 area = input["area"]
 RoomNames = input["RoomNames"]
-Np_rooms = sp.array(input["Np_rooms"])
+Np_rooms = np.array(input["Np_rooms"])
 RoomInlets = input["RoomInlets"]
 TravelTimeWeights = input["TravelTimeWeights"]
-DoorCenters = sp.array(input["DoorCenters"])
-RoomCenters = sp.array(input["RoomCenters"])
-CircAngles = sp.array(input["CircAngles"])
+DoorCenters = np.array(input["DoorCenters"])
+RoomCenters = np.array(input["RoomCenters"])
+CircAngles = np.array(input["CircAngles"])
 DoorRoomCapacity = input["DoorRoomCapacity"]
 Nsecondes = input["Nsecondes"]
 print("===> Number of persons per rooms : ",Np_rooms)
@@ -145,36 +145,36 @@ print("===> Maximal number of inlets for a room : ",NiorMax)
 print("===> Number of inlets for each room : ",Nior)
 
 ## Room numbers associate to the inlets for each room
-List_iOr = sp.zeros([Nrooms,NiorMax],dtype=int)
+List_iOr = np.zeros([Nrooms,NiorMax],dtype=int)
 for i,ri in enumerate(RoomInlets):
     List_iOr[i,:len(ri)] = ri
 #print("===> Room numbers associate to the inlets for each room",List_iOr)
 
 ## Compute travel times :
-T_iOr = sp.zeros([Nrooms,NiorMax],dtype=int)
-for ir in sp.arange(Nrooms):
-    for i in sp.arange(Nior[ir]):
+T_iOr = np.zeros([Nrooms,NiorMax],dtype=int)
+for ir in np.arange(Nrooms):
+    for i in np.arange(Nior[ir]):
         jr = List_iOr[ir,i]
-        ij_exit = sp.rint(DoorCenters[ir,:2]/px).astype(int)
-        ij_entrance = sp.rint(DoorCenters[jr,:2]/px).astype(int)
-        T_iOr[ir,i] = sp.ceil( \
+        ij_exit = np.rint(DoorCenters[ir,:2]/px).astype(int)
+        ij_entrance = np.rint(DoorCenters[jr,:2]/px).astype(int)
+        T_iOr[ir,i] = np.ceil( \
                       dom.door_distance.data[ij_entrance[1],ij_entrance[0]] - \
                       dom.door_distance.data[ij_exit[1],ij_exit[0]] )
         T_iOr[ir,i] = TravelTimeWeights[ir][i]*T_iOr[ir,i]
 print("Travel times : ",T_iOr)
 
-NPrir = sp.zeros([Nrooms,NiorMax])
+NPrir = np.zeros([Nrooms,NiorMax])
 
 ## Number of persons for each room
-NPir = sp.zeros([Nsecondes , Nrooms])
+NPir = np.zeros([Nsecondes , Nrooms])
 NPir[0,:] = Np_rooms
 
 ## Number of persons who's waiting to leave each room
-NPwir = sp.zeros([Nsecondes , Nrooms])
+NPwir = np.zeros([Nsecondes , Nrooms])
 NPwir[0,:]=NPir[0,:]
 
 ## Nrooms of persons upstream the exit
-Flux = sp.zeros([Nsecondes , Nrooms])
+Flux = np.zeros([Nsecondes , Nrooms])
 
 print("--> NPir at t=0 : ",NPir[0,:].sum())
 
@@ -184,7 +184,7 @@ plot_compt(5, RoomNames, RoomCenters, DoorCenters, CircAngles, NPir[it,:],
            filename=prefix+"fig_"+str(it).zfill(6)+".png",
            title='time = '+str(it)+' s')
 
-for it in sp.arange(1,Nsecondes):
+for it in np.arange(1,Nsecondes):
 
     Flux,NPir,NPwir,NPrir = iteration(it, Nrooms, DoorRoomCapacity, NPir, NPrir,
                                       NPwir, Nior, List_iOr, T_iOr, Flux)

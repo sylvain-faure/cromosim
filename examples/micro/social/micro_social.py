@@ -119,7 +119,7 @@ wall_ellipses = input["wall_ellipses"]
 wall_polygons = input["wall_polygons"]
 door_lines = input["door_lines"]
 seed = input["seed"]
-N = sp.array(input["N"]).astype(int)
+N = np.array(input["N"]).astype(int)
 print("N = ",N)
 Np = N.sum()
 rmin = input["rmin"]
@@ -201,14 +201,14 @@ people, people_init_box_id, rng = people_initialization(N, init_people_box, dom,
 
 ## Array to store the results : all the people coordinates for all times
 Np = people.shape[0]
-Uold = sp.zeros((Np,2))
+Uold = np.zeros((Np,2))
 Np_init = Np
-people_id = sp.arange(Np)
-results = sp.copy(people[:,:2]).reshape((Np,2,1))
+people_id = np.arange(Np)
+results = np.copy(people[:,:2]).reshape((Np,2,1))
 
 ## Array to store sensor data : time dir pts[2] for each sensor line
 if (len(sensors)>0):
-    sensor_data = sp.zeros((Np,4,len(sensors)))
+    sensor_data = np.zeros((Np,4,len(sensors)))
 
 """
     Main loop
@@ -254,9 +254,9 @@ while (t<Tf):
         print("END... Nobody here !")
         break
     ## Store people positions in the result array (used to draw people paths)
-    tmp = 1e99*sp.ones((Np_init,2))
+    tmp = 1e99*np.ones((Np_init,2))
     tmp[people_id,:] = people[:,:2]
-    results = sp.concatenate((results,tmp.reshape((Np_init,2,1))), axis=2)
+    results = np.concatenate((results,tmp.reshape((Np_init,2,1))), axis=2)
 
     t += dt
     Uold = U

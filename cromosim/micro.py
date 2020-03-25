@@ -5,7 +5,11 @@
 
 import sys
 import scipy as sp
-from scipy.misc import imread
+import numpy as np
+try:
+    from scipy.misc import imread
+except:
+    from imageio import imread
 #from scipy.spatial import KDTree
 from scipy.spatial import cKDTree
 from scipy.sparse import csr_matrix
@@ -49,34 +53,34 @@ def compute_contacts(dom, people, dmax):
     rmax = people[:,2].max()
     neighbors = kd.query_ball_tree(kd,dmax+2*rmax)
     ## Create the contact array : i,j,dij,eij_x,eij_y
-    first_elements = sp.arange(people.shape[0]) ## i.e. i
+    first_elements = np.arange(people.shape[0]) ## i.e. i
     other_elements = list(map(lambda x: x[1:], neighbors)) ## i.e. all the j values for each i
     lengths = list(map(len, other_elements))
-    tt = sp.stack([first_elements,lengths],axis=1)
-    I = sp.concatenate(list(map(lambda x: sp.full((x[1],), x[0]), tt))).astype(int)
-    J = sp.concatenate(other_elements).astype(int)
-    ind = sp.where(I<J)[0]
+    tt = np.stack([first_elements,lengths],axis=1)
+    I = np.concatenate(list(map(lambda x: np.full((x[1],), x[0]), tt))).astype(int)
+    J = np.concatenate(other_elements).astype(int)
+    ind = np.where(I<J)[0]
     I = I[ind] ; J = J[ind]
     DP = people[J,:2]-people[I,:2]
-    Norm = sp.linalg.norm(DP,axis=1,ord=2)
+    Norm = np.linalg.norm(DP,axis=1,ord=2)
     Dij = Norm - people[I,2]-people[J,2]
-    ind = sp.where(Dij<dmax)[0]
+    ind = np.where(Dij<dmax)[0]
     Dij = Dij[ind]
     I = I[ind]
     J = J[ind]
     Norm = Norm[ind]
     DP = DP[ind]
-    contacts = sp.stack([I,J,Dij,DP[:,0]/Norm,DP[:,1]/Norm],axis=1)
+    contacts = np.stack([I,J,Dij,DP[:,0]/Norm,DP[:,1]/Norm],axis=1)
     # Add contacts with the walls
-    II = sp.floor((people[:,1]-dom.ymin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
-    JJ = sp.floor((people[:,0]-dom.xmin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
+    II = np.floor((people[:,1]-dom.ymin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
+    JJ = np.floor((people[:,0]-dom.xmin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
     DD = dom.wall_distance[II,JJ] - people[:,2]
-    ind = sp.where(DD<dmax)[0]
-    wall_contacts = sp.stack([ind,-1*sp.ones(ind.shape),DD[ind],
+    ind = np.where(DD<dmax)[0]
+    wall_contacts = np.stack([ind,-1*np.ones(ind.shape),DD[ind],
                               dom.wall_grad_X[II[ind],JJ[ind]],
                               dom.wall_grad_Y[II[ind],JJ[ind]]  ],axis=1)
-    contacts = sp.vstack([contacts,wall_contacts])
-    return sp.array(contacts)
+    contacts = np.vstack([contacts,wall_contacts])
+    return np.array(contacts)
 
 def compute_desired_velocity(dom, people):
     """
@@ -99,9 +103,9 @@ def compute_desired_velocity(dom, people):
     Vd : numpy array
         people desired velocity
     """
-    I = sp.floor((people[:,1]-dom.ymin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
-    J = sp.floor((people[:,0]-dom.xmin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
-    Vd = sp.zeros( (people.shape[0],2) )
+    I = np.floor((people[:,1]-dom.ymin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
+    J = np.floor((people[:,0]-dom.xmin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
+    Vd = np.zeros( (people.shape[0],2) )
     Vd[:,0] = dom.desired_velocity_X[I,J]
     Vd[:,1] = dom.desired_velocity_Y[I,J]
     return I,J,Vd
@@ -147,9 +151,9 @@ def compute_forces(F, Fwall, people, contacts, U, Vd, lambda_, delta, k, eta):
     """
     Np = people.shape[0]
     Nc = contacts.shape[0]
-    Forces = sp.zeros((Np,2))
+    Forces = np.zeros((Np,2))
     ## Social forces, friction,...
-    for ic in sp.arange(Nc):
+    for ic in np.arange(Nc):
         i = int(contacts[ic,0])
         j = int(contacts[ic,1])
         dij = contacts[ic,2]
@@ -158,21 +162,21 @@ def compute_forces(F, Fwall, people, contacts, U, Vd, lambda_, delta, k, eta):
         eij_y = contacts[ic,4]
         if (j>-1): ## contact person/person
             # Angular dependence
-            norm_Vdi = sp.sqrt( Vd[i,0]**2+Vd[i,1]**2 )
+            norm_Vdi = np.sqrt( Vd[i,0]**2+Vd[i,1]**2 )
             if (norm_Vdi > 0):
-                theta_ij = sp.arccos(  (Vd[i,0]*eij_x+Vd[i,1]*eij_y)/norm_Vdi )
-                omega_ij = lambda_+(1-lambda_)*(1+sp.cos(theta_ij))/2
+                theta_ij = np.arccos(  (Vd[i,0]*eij_x+Vd[i,1]*eij_y)/norm_Vdi )
+                omega_ij = lambda_+(1-lambda_)*(1+np.cos(theta_ij))/2
             else:
                 omega_ij= 1
-            norm_Vdj = sp.sqrt( Vd[j,0]**2+Vd[j,1]**2 )
+            norm_Vdj = np.sqrt( Vd[j,0]**2+Vd[j,1]**2 )
             if (norm_Vdj > 0):
-                theta_ji = sp.arccos( -(Vd[j,0]*eij_x+Vd[j,1]*eij_y)/norm_Vdj )
-                omega_ji = lambda_+(1-lambda_)*(1+sp.cos(theta_ji))/2
+                theta_ji = np.arccos( -(Vd[j,0]*eij_x+Vd[j,1]*eij_y)/norm_Vdj )
+                omega_ji = lambda_+(1-lambda_)*(1+np.cos(theta_ji))/2
             else:
                 omega_ji = 1
             # Social force + force to handle overlapping
-            fij = -omega_ij*F*sp.exp(-dij/delta) + k*dij_moins
-            fji = -omega_ji*F*sp.exp(-dij/delta) + k*dij_moins
+            fij = -omega_ij*F*np.exp(-dij/delta) + k*dij_moins
+            fji = -omega_ji*F*np.exp(-dij/delta) + k*dij_moins
             Forces[i,0] += fij*eij_x
             Forces[i,1] += fij*eij_y
             Forces[j,0] -= fji*eij_x
@@ -185,7 +189,7 @@ def compute_forces(F, Fwall, people, contacts, U, Vd, lambda_, delta, k, eta):
             Forces[j,0] += fij_friction*eij_y
             Forces[j,1] -= fij_friction*eij_x
         else: ## contact person/walls
-            fij = -Fwall*sp.exp(-dij/delta) + k*dij_moins
+            fij = -Fwall*np.exp(-dij/delta) + k*dij_moins
             Forces[i,0] -= fij*eij_x
             Forces[i,1] -= fij*eij_y
     return Forces
@@ -254,8 +258,8 @@ def projection(dt, people, contacts, Vd, dmin = 0.0, \
             cvxopt.solvers.reltol = 1e-7
             L = None
             P = None
-            U = sp.zeros((2*Np,))
-            V = sp.zeros((2*Np,))
+            U = np.zeros((2*Np,))
+            V = np.zeros((2*Np,))
             Z = (contacts[:,2]-dmin)/dt ## ie Dij/dt
             V[::2] = Vd[:,0]; V[1::2] = Vd[:,1] ## A priori velocity
             V = cvxopt.matrix(V)
@@ -264,18 +268,18 @@ def projection(dt, people, contacts, Vd, dmin = 0.0, \
             if (Nc>0):
                 II = contacts[:,0].astype(int)
                 JJ = contacts[:,1].astype(int)
-                Jpos = sp.where(JJ>=0)[0]
-                Jneg = sp.where(JJ<0)[0]
-                row = sp.concatenate([Jpos, Jpos, Jpos, Jpos, Jneg, Jneg])
-                col = sp.concatenate([2*II[Jpos], 2*II[Jpos]+1,
+                Jpos = np.where(JJ>=0)[0]
+                Jneg = np.where(JJ<0)[0]
+                row = np.concatenate([Jpos, Jpos, Jpos, Jpos, Jneg, Jneg])
+                col = np.concatenate([2*II[Jpos], 2*II[Jpos]+1,
                                       2*JJ[Jpos], 2*JJ[Jpos]+1,
                                       2*II[Jneg], 2*II[Jneg]+1])
-                data = sp.concatenate([contacts[Jpos,3], contacts[Jpos,4],
+                data = np.concatenate([contacts[Jpos,3], contacts[Jpos,4],
                                        -contacts[Jpos,3], -contacts[Jpos,4],
                                        -contacts[Jneg,3], -contacts[Jneg,4]])
                 B = csr_matrix((data, (row, col)), shape=(Nc, 2*Np))#.toarray()
-                cvxoptB = cvxopt.spmatrix(sp.array(data),sp.array(row),
-                                          sp.array(col),size=(Nc, 2*Np))
+                cvxoptB = cvxopt.spmatrix(np.array(data),np.array(row),
+                                          np.array(col),size=(Nc, 2*Np))
                 if (method == "mosek"):
                     from mosek import iparam
                     cvxopt.solvers.options['mosek'] = {iparam.log: 0}
@@ -294,39 +298,39 @@ def projection(dt, people, contacts, Vd, dmin = 0.0, \
                           ", nb of iterations = ",solution["iterations"],
                           ", status = ",solution["status"],
                           ", contrainte (Z-B@U).min() = ",C.min())
-            U = sp.array(U).reshape((Np, 2))
+            U = np.array(U).reshape((Np, 2))
 
         elif (method=="uzawa"):
 
             info = 0
             II = contacts[:,0].astype(int)
             JJ = contacts[:,1].astype(int)
-            Jpos = sp.where(JJ>=0)[0]
-            Jneg = sp.where(JJ<0)[0]
-            row = sp.concatenate([Jpos, Jpos, Jpos, Jpos, Jneg, Jneg])
-            col = sp.concatenate([2*II[Jpos], 2*II[Jpos]+1,
+            Jpos = np.where(JJ>=0)[0]
+            Jneg = np.where(JJ<0)[0]
+            row = np.concatenate([Jpos, Jpos, Jpos, Jpos, Jneg, Jneg])
+            col = np.concatenate([2*II[Jpos], 2*II[Jpos]+1,
                                   2*JJ[Jpos], 2*JJ[Jpos]+1,
                                   2*II[Jneg], 2*II[Jneg]+1])
-            data = sp.concatenate([contacts[Jpos,3], contacts[Jpos,4],
+            data = np.concatenate([contacts[Jpos,3], contacts[Jpos,4],
                                    -contacts[Jpos,3], -contacts[Jpos,4],
                                    -contacts[Jneg,3], -contacts[Jneg,4]])
             B = csr_matrix((data, (row, col)), shape=(Nc, 2*Np))#.toarray()
-            L = sp.zeros((Nc,))
-            R = 99*sp.ones((Nc,))
-            U = sp.zeros((2*Np,))
-            V = sp.zeros((2*Np,))
+            L = np.zeros((Nc,))
+            R = 99*np.ones((Nc,))
+            U = np.zeros((2*Np,))
+            V = np.zeros((2*Np,))
             D = contacts[:,2]
             V[::2] = Vd[:,0]; V[1::2] = Vd[:,1]
             k = 0
             while (( dt*R.max()>tol*2*people[:,2].min()) and (k<nb_iter_max)):
                 U[:] = V[:] - B.transpose()@L[:]
                 R[:] = B@U[:] - (D[:]-dmin)/dt
-                L[:] = sp.maximum(L[:] + rho*R[:], 0)
+                L[:] = np.maximum(L[:] + rho*R[:], 0)
                 k += 1
-            P = sp.zeros(Np) ## Pressure
-            P[II[Jpos]] +=  3/(4*sp.pi*people[II[Jpos],2]**2)*L[Jpos]
-            P[JJ[Jpos]] +=  3/(4*sp.pi*people[JJ[Jpos],2]**2)*L[Jpos]
-            P[II[Jneg]] +=  3/(4*sp.pi*people[II[Jneg],2]**2)*L[Jneg]
+            P = np.zeros(Np) ## Pressure
+            P[II[Jpos]] +=  3/(4*np.pi*people[II[Jpos],2]**2)*L[Jpos]
+            P[JJ[Jpos]] +=  3/(4*np.pi*people[JJ[Jpos],2]**2)*L[Jpos]
+            P[II[Jneg]] +=  3/(4*np.pi*people[II[Jneg],2]**2)*L[Jneg]
             if log:
                 print("    projection (uzawa) : nb of contacts = ",Nc,
                       ", nb of iterations = ",k,", min = ",R.min(),
@@ -424,10 +428,10 @@ def exit_door(sexit, dom, people, U, arrays=[]):
     arrays: list of numpy array
         new array resized
     """
-    I = sp.floor((people[:,1]-dom.ymin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
-    J = sp.floor((people[:,0]-dom.xmin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
+    I = np.floor((people[:,1]-dom.ymin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
+    J = np.floor((people[:,0]-dom.xmin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
     D = dom.door_distance[I,J]
-    ind = sp.where(D>sexit)
+    ind = np.where(D>sexit)
     if (len(arrays)>0):
         return people[ind[0],:], U[ind[0],:], [ a[ind[0]] for a in arrays]
     else:
@@ -469,20 +473,20 @@ def exit_out_of_domain(dom, people, arrays=[], box=None):
             (people[:,0]-people[:,2]>=box[1]-dom.pixel_size) + \
             (people[:,1]-people[:,2]<=box[2]+dom.pixel_size) + \
             (people[:,1]-people[:,2]>=box[3]-dom.pixel_size)
-    ind = sp.where(S==False)[0]
+    ind = np.where(S==False)[0]
     people = people[ind,:]
     if (len(arrays)>0):
         for a in arrays:
             a = a[ind]
     ## Remove people who are too close to walls or with a masked door distance
-    I = sp.floor((people[:,1]-dom.ymin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
-    J = sp.floor((people[:,0]-dom.xmin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
+    I = np.floor((people[:,1]-dom.ymin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
+    J = np.floor((people[:,0]-dom.xmin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
     Dwall = dom.wall_distance[I,J]-people[:,2]
     Ddoor = dom.door_distance[I,J]
-    indDwall = sp.where(Dwall<=dom.pixel_size)[0]
-    indDdoor = sp.where(Ddoor.mask==True)[0]
-    ind = sp.unique(sp.concatenate((indDwall,indDdoor)))
-    comp_ind = sp.setdiff1d(sp.arange(people.shape[0]), ind)
+    indDwall = np.where(Dwall<=dom.pixel_size)[0]
+    indDdoor = np.where(Ddoor.mask==True)[0]
+    ind = np.unique(np.concatenate((indDwall,indDdoor)))
+    comp_ind = np.setdiff1d(np.arange(people.shape[0]), ind)
     if (len(arrays)>0):
         return people[comp_ind,:], [ a[comp_ind] for a in arrays]
     else:
@@ -519,7 +523,7 @@ def exit_box(box, sexit, people, U, arrays=[]):
         (people[:,0]-people[:,2]>=box[1]-sexit) + \
         (people[:,1]-people[:,2]<=box[2]+sexit) + \
         (people[:,1]-people[:,2]>=box[3]-sexit)
-    ind = sp.where(S==False)
+    ind = np.where(S==False)
     if (len(arrays)>0):
         return people[ind[0],:], U[ind[0],:], [ a[ind[0]] for a in arrays]
     else:
@@ -560,8 +564,8 @@ def periodic_bc_vertical(ymin, ymax, people, U, xmin=None, xmax=None, rng=None):
     """
     Smin = (people[:,1]<ymin)
     Smax = (people[:,1]>ymax)
-    indmin = sp.where(Smin==True)[0]
-    indmax = sp.where(Smax==True)[0]
+    indmin = np.where(Smin==True)[0]
+    indmax = np.where(Smax==True)[0]
     people[indmin,1] += (ymax-ymin)
     people[indmax,1] -= (ymax-ymin)
     U[indmin,:]=0
@@ -569,7 +573,7 @@ def periodic_bc_vertical(ymin, ymax, people, U, xmin=None, xmax=None, rng=None):
     if xmin is not None:
         if xmax is not None:
             if rng is None:
-                rng = sp.random.RandomState()
+                rng = np.random.RandomState()
             x_indmin = rng.uniform(xmin, xmax, indmin.shape[0])
             people[indmin,0] = x_indmin
             x_indmax = rng.uniform(xmin, xmax, indmax.shape[0])
@@ -577,16 +581,16 @@ def periodic_bc_vertical(ymin, ymax, people, U, xmin=None, xmax=None, rng=None):
     return people, U
 
 
-def create_people_in_box(np, box, rmin, rmax, dom, rng):
+def create_people_in_box(nn, box, rmin, rmax, dom, rng):
     """
-    To create np persons in a given box. The overlaps are not treated for \
+    To create nn persons in a given box. The overlaps are not treated for \
     the moment but one checks that the individuals are located in an area where \
     the desired velocity is well defined (outside inaccessible areas or \
     obstacles). If it is not the case, one changes their coordinates in consequence.
 
     Parameters
     ----------
-    np: integer
+    nn: integer
         number of individuals to create
     box: list
         coordinates of the box [xmin, xmax, ymin, ymax]
@@ -604,20 +608,20 @@ def create_people_in_box(np, box, rmin, rmax, dom, rng):
     p: numpy array
         new people coordinates x y r
     """
-    print("------ create_people_in_box --> Create "+str(np)+ \
+    print("------ create_people_in_box --> Create "+str(nn)+ \
           " individuals in the box "+str(box)+", overlaps can occur...")
-    p = sp.zeros((np,3))  # x y r
-    p[:,2] = rng.uniform(rmin, rmax, np)
+    p = np.zeros((nn,3))  # x y r
+    p[:,2] = rng.uniform(rmin, rmax, nn)
     p_rmax = p[:,2].max()
     xmin, xmax, ymin, ymax = box
-    p[:,0] = rng.uniform(xmin+p_rmax, xmax-p_rmax, np)
-    p[:,1] = rng.uniform(ymin+p_rmax, ymax-p_rmax, np)
+    p[:,0] = rng.uniform(xmin+p_rmax, xmax-p_rmax, nn)
+    p[:,1] = rng.uniform(ymin+p_rmax, ymax-p_rmax, nn)
     ## To check if people are well localized in the domain
     ## i.e. where a desired velocity is defined
     while True:
         I, J, Vd = compute_desired_velocity(dom, p)
         normVd = Vd[:,0]**2+Vd[:,1]**2
-        ind = sp.where(normVd==0)[0]
+        ind = np.where(normVd==0)[0]
         if (ind.shape[0]>0):
             p[ind,0] = rng.uniform(xmin+p_rmax, xmax-p_rmax, ind.shape[0])
             p[ind,1] = rng.uniform(ymin+p_rmax, ymax-p_rmax, ind.shape[0])
@@ -658,10 +662,10 @@ def check_people_in_box(dom, box, p, rng):
     info = False
     while True:
         ## test 1
-        I = sp.floor((p[:,1]-dom.ymin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
-        J = sp.floor((p[:,0]-dom.xmin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
+        I = np.floor((p[:,1]-dom.ymin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
+        J = np.floor((p[:,0]-dom.xmin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
         test1 = (I>=0)*(I<dom.height)*(J>=0)*(J<dom.width)
-        ind1 = sp.where(test1==0)[0]
+        ind1 = np.where(test1==0)[0]
         if (ind1.shape[0]>0):
             print("------ check_people_in_box --> "+str(ind1.shape[0])+ \
                   " individuals outside the domain")
@@ -675,7 +679,7 @@ def check_people_in_box(dom, box, p, rng):
             test2 = (p[:,0]>xmin+p_rmax)*(p[:,0]<xmax-p_rmax) \
                   *(p[:,1]>ymin+p_rmax)*(p[:,1]<ymax-p_rmax) \
                   *(normVd>0)
-            ind2 = sp.where(test2==0)[0]
+            ind2 = np.where(test2==0)[0]
             if (ind2.shape[0]>0):
                 print("------ check_people_in_box --> "+str(ind2.shape[0])+ \
                       " individuals with an undefined desired velocity ")
@@ -780,28 +784,28 @@ def people_initialization(N, init_people_box, dom, dt, rmin, rmax, dmin=0,
     """
     print("\n =================> INITIALIZATION : PEOPLE POSITIONS")
     ## To initialize people positions
-    rng = sp.random.RandomState()
+    rng = np.random.RandomState()
     if (seed>0):
-        rng = sp.random.RandomState(seed)
+        rng = np.random.RandomState(seed)
     print("=================> INITIALIZATION : SEED = ",rng.get_state()[1][0])
     ## People properties : radius and initial random coordinates
     ## overlaps can occur...
-    people = sp.zeros((N.sum(),3))  # x y r
-    people_init_box_id = sp.zeros((N.sum(),),dtype=int)
+    people = np.zeros((N.sum(),3))  # x y r
+    people_init_box_id = np.zeros((N.sum(),),dtype=int)
     pos = 0
     ## Loop over all the boxes where we are supposed to put individuals at
     ## the initializations
-    for ip,np in enumerate(N):
-        print("=================> INITIALIZATION : "+str(np)+" IN BOX "+ \
+    for ip,nn in enumerate(N):
+        print("=================> INITIALIZATION : "+str(nn)+" IN BOX "+ \
               str(init_people_box[ip]))
-        pp = create_people_in_box(np, init_people_box[ip], rmin, rmax, dom, rng)
+        pp = create_people_in_box(nn, init_people_box[ip], rmin, rmax, dom, rng)
         pp = remove_overlaps_in_box(dom, init_people_box[ip], pp, dt, rng,
                                     dmin, itermax=itermax)
-        people[pos:pos+np,0] = pp[:,0]
-        people[pos:pos+np,1] = pp[:,1]
-        people[pos:pos+np,2] = pp[:,2]
-        people_init_box_id[pos:pos+np] = ip
-        pos += np
+        people[pos:pos+nn,0] = pp[:,0]
+        people[pos:pos+nn,1] = pp[:,1]
+        people[pos:pos+nn,2] = pp[:,2]
+        people_init_box_id[pos:pos+nn] = ip
+        pos += nn
     print("=================> INITIALIZATION : LAST STEP (remove the overlaps"+ \
           " between individuals in different boxes...)")
     people = remove_overlaps_in_box(dom, [dom.xmin, dom.xmax, dom.ymin, dom.ymax],
@@ -851,51 +855,51 @@ def sensor(door, xy0, xy1, t0, t1):
     #   door :     d0--p--d1
     #                   |
     #                   xy1
-    d0 = sp.empty(xy0.shape)
+    d0 = np.empty(xy0.shape)
     d0[:,0] = door[0]
     d0[:,1] = door[1]
-    d1 = sp.empty(xy1.shape)
+    d1 = np.empty(xy1.shape)
     d1[:,0] = door[2]
     d1[:,1] = door[3]
-    T = sp.array([[0, -1], [1, 0]])
-    vdoor = sp.atleast_2d(d1 - d0)
-    vtraj = sp.atleast_2d(xy1 - xy0)
-    v0 = sp.atleast_2d(d0 - xy0)
-    dot_vdoor_T = sp.dot(vdoor, T)
-    denom = sp.sum(dot_vdoor_T * vtraj, axis=1)
-    num = sp.sum(dot_vdoor_T * v0, axis=1)
+    T = np.array([[0, -1], [1, 0]])
+    vdoor = np.atleast_2d(d1 - d0)
+    vtraj = np.atleast_2d(xy1 - xy0)
+    v0 = np.atleast_2d(d0 - xy0)
+    dot_vdoor_T = np.dot(vdoor, T)
+    denom = np.sum(dot_vdoor_T * vtraj, axis=1)
+    num = np.sum(dot_vdoor_T * v0, axis=1)
     # Intersection points
     # can be inf or nan if parallel lines...
-    p = sp.atleast_2d(num / denom).T * vtraj + xy0
+    p = np.atleast_2d(num / denom).T * vtraj + xy0
     # Test if the intersection point is on the door segment
-    vp0 = sp.atleast_2d(p - d0)
-    norm_vdoor_2 = sp.sum(vdoor*vdoor,axis=1)
-    dot_vdoor_vp0 = sp.sum(vdoor*vp0,axis=1)
+    vp0 = np.atleast_2d(p - d0)
+    norm_vdoor_2 = np.sum(vdoor*vdoor,axis=1)
+    dot_vdoor_vp0 = np.sum(vdoor*vp0,axis=1)
     is_p_in_door = (dot_vdoor_vp0>=0)*(dot_vdoor_vp0<=norm_vdoor_2)
     # Test if the intersection point is on the person trajectory
-    vpxy0 = sp.atleast_2d(p - xy0)
-    norm_vtraj_2 = sp.sum(vtraj*vtraj,axis=1)
-    dot_vtraj_vpxy0 = sp.sum(vtraj*vpxy0,axis=1)
+    vpxy0 = np.atleast_2d(p - xy0)
+    norm_vtraj_2 = np.sum(vtraj*vtraj,axis=1)
+    dot_vtraj_vpxy0 = np.sum(vtraj*vpxy0,axis=1)
     is_p_in_traj = (dot_vtraj_vpxy0>=0)*(dot_vtraj_vpxy0<=norm_vtraj_2)
     # Keep only points on the door and on the trajectory
     is_p_intersect = is_p_in_door*is_p_in_traj
-    id = sp.where(is_p_intersect==True)[0]
+    id = np.where(is_p_intersect==True)[0]
     # Test if the direction is the output normal : (d1-d0)_y , (d1-d0)_x
-    vn = sp.empty(vdoor.shape)
+    vn = np.empty(vdoor.shape)
     vn[:,0] = vdoor[:,1]
     vn[:,1] = -vdoor[:,0]
-    dot_vn_vtraj = sp.sum(vn*vtraj,axis=1)
+    dot_vn_vtraj = np.sum(vn*vtraj,axis=1)
     is_normal_dir = (dot_vn_vtraj>0)
     io = (is_normal_dir[id]==True)*1+(is_normal_dir[id]==False)*(-1)
-    exits = sp.sum(io==1)
-    entries = sp.sum(io==-1)
+    exits = np.sum(io==1)
+    entries = np.sum(io==-1)
     # Compute the distance from the intersection point p to xy0
-    norm_vpxy0_2= sp.sqrt(sp.sum(vpxy0 * vpxy0, axis=1))
+    norm_vpxy0_2= np.sqrt(np.sum(vpxy0 * vpxy0, axis=1))
     # Compute the distance from the intersection point p to xy1
-    vpxy1 = sp.atleast_2d(p - xy1)
-    norm_vpxy1_2 = sp.sqrt(sp.sum(vpxy1 * vpxy1, axis=1))
+    vpxy1 = np.atleast_2d(p - xy1)
+    norm_vpxy1_2 = np.sqrt(np.sum(vpxy1 * vpxy1, axis=1))
     # Compute the intersection time
-    norm_vtraj = sp.sqrt(norm_vtraj_2)
+    norm_vtraj = np.sqrt(norm_vtraj_2)
     dt = t1-t0
     times = t0 + (is_normal_dir==True)*(norm_vpxy0_2*dt/norm_vtraj) + \
             (is_normal_dir==False)*(norm_vpxy1_2*dt/norm_vtraj)
@@ -932,22 +936,22 @@ def add_people_in_box(Np, dom, xmin, xmax, ymin, ymax, rmin, rmax, rng):
         people coordinates and radius
     """
     px = dom.pixel_size
-    people = sp.zeros((Np,3))  # x y r
+    people = np.zeros((Np,3))  # x y r
     people[:,0] = rng.uniform(xmin, xmax, Np)
     people[:,1] = rng.uniform(ymin, ymax, Np)
     people[:,2] = rng.uniform(rmin, rmax, Np)
-    I = sp.floor((people[:,1]-dom.ymin-0.5*px)/px).astype(int)
-    J = sp.floor((people[:,0]-dom.xmin-0.5*px)/px).astype(int)
+    I = np.floor((people[:,1]-dom.ymin-0.5*px)/px).astype(int)
+    J = np.floor((people[:,0]-dom.xmin-0.5*px)/px).astype(int)
 
     D = dom.wall_distance[I,J]-people[:,2]
-    ind = sp.where(D<=px)
+    ind = np.where(D<=px)
     while (ind[0].shape[0]>0):
         people[ind[0],0] = rng.uniform(xmin, xmax, ind[0].shape[0])
         people[ind[0],1] = rng.uniform(ymin, ymax, ind[0].shape[0])
-        I = sp.floor((people[:,1]-dom.ymin-0.5*px)/px).astype(int)
-        J = sp.floor((people[:,0]-dom.xmin-0.5*px)/px).astype(int)
+        I = np.floor((people[:,1]-dom.ymin-0.5*px)/px).astype(int)
+        J = np.floor((people[:,0]-dom.xmin-0.5*px)/px).astype(int)
         D = dom.wall_distance[I,J]-people[:,2]
-        ind = sp.where(D<=px)
+        ind = np.where(D<=px)
     return people
 
 
@@ -1014,8 +1018,8 @@ def plot_people(ifig, dom, people, contacts, U, colors, time=-1, axis=None,
         # Contacts
         Nc = contacts.shape[0]
         if (Nc>0):
-            for ic in sp.arange(Nc):
-                i = sp.int64(contacts[ic,0]); j = sp.int64(contacts[ic,1])
+            for ic in np.arange(Nc):
+                i = np.int64(contacts[ic,0]); j = np.int64(contacts[ic,1])
                 if (j!=-1):
                     line = Line2D([ people[i,0],people[j,0] ],
                               [ people[i,1],people[j,1] ],
@@ -1030,14 +1034,14 @@ def plot_people(ifig, dom, people, contacts, U, colors, time=-1, axis=None,
     if (plot_velocities):
         # Velocities
         Np = people.shape[0]
-        for ip in sp.arange(Np):
+        for ip in np.arange(Np):
             arrow = Arrow(people[ip,0], people[ip,1], U[ip,0], U[ip,1], width=0.3)
             ax1.add_patch(arrow)
     if ((plot_paths) and (paths is not None)):
-        mpaths = sp.ma.masked_values(paths, 1e99)
+        mpaths = np.ma.masked_values(paths, 1e99)
         pathlines = []
-        for id in sp.arange(paths.shape[0]):
-            pathlines.append(sp.swapaxes(mpaths[id,:,:],0,1))
+        for id in np.arange(paths.shape[0]):
+            pathlines.append(np.swapaxes(mpaths[id,:,:],0,1))
         pathlinecoll = LineCollection(pathlines, linewidths=0.5, linestyle="solid",
                        cmap=plt.get_cmap(cmap))
         pathlinecoll.set_array(colors)
@@ -1098,7 +1102,7 @@ def plot_sensor_data(ifig, sensor_data, time, initial_door_dist=None, axis = Non
 
     ax1 = fig.add_subplot(211)
     if (initial_door_dist is None):
-        ax1.plot(sp.arange(Np),sensor_data[:,0],'b+')
+        ax1.plot(np.arange(Np),sensor_data[:,0],'b+')
         ax1.set_title('Crossing time (s) vs people id')
     else:
         ax1.plot(initial_door_dist,sensor_data[:,0],'b+')
@@ -1110,18 +1114,18 @@ def plot_sensor_data(ifig, sensor_data, time, initial_door_dist=None, axis = Non
     #ax1.set_yticks([])
     #ax1.axis('off')
 
-    tgrid = sp.arange(tmin, tmax, step=flux_timestep)
-    tgrid = sp.append(tgrid, tgrid[-1]+flux_timestep)
-    flux_exits = sp.zeros(tgrid.shape)
-    flux_entries = sp.zeros(tgrid.shape)
-    exits = sp.where(sensor_data[:,1]==1)[0]
-    entries = sp.where(sensor_data[:,1]==-1)[0]
-    t_exits = sp.ceil((sensor_data[exits,0]-tmin)/flux_timestep)
-    t_entries = sp.ceil((sensor_data[entries,0]-tmin)/flux_timestep)
-    #t_exits = sp.floor((sensor_data[exits,0]-tmin)/flux_timestep)
-    #t_entries = sp.floor((sensor_data[entries,0]-tmin)/flux_timestep)
-    unique_exits, counts_exits = sp.unique(t_exits, return_counts=True)
-    unique_entries, counts_entries = sp.unique(t_entries, return_counts=True)
+    tgrid = np.arange(tmin, tmax, step=flux_timestep)
+    tgrid = np.append(tgrid, tgrid[-1]+flux_timestep)
+    flux_exits = np.zeros(tgrid.shape)
+    flux_entries = np.zeros(tgrid.shape)
+    exits = np.where(sensor_data[:,1]==1)[0]
+    entries = np.where(sensor_data[:,1]==-1)[0]
+    t_exits = np.ceil((sensor_data[exits,0]-tmin)/flux_timestep)
+    t_entries = np.ceil((sensor_data[entries,0]-tmin)/flux_timestep)
+    #t_exits = np.floor((sensor_data[exits,0]-tmin)/flux_timestep)
+    #t_entries = np.floor((sensor_data[entries,0]-tmin)/flux_timestep)
+    unique_exits, counts_exits = np.unique(t_exits, return_counts=True)
+    unique_entries, counts_entries = np.unique(t_entries, return_counts=True)
     flux_exits[unique_exits.astype(int)] = counts_exits
     flux_entries[unique_entries.astype(int)] = counts_entries
 
@@ -1138,9 +1142,9 @@ def plot_sensor_data(ifig, sensor_data, time, initial_door_dist=None, axis = Non
     # Optionally : adds some histograms
     # if (exits.shape[0]>0):
     #     ax3 = fig.add_subplot(413)
-    #     t_exits_sorted = sp.sort(sensor_data[exits,0])
+    #     t_exits_sorted = np.sort(sensor_data[exits,0])
     #     #print("t_exits_sorted = ",t_exits_sorted)
-    #     tmp = sp.concatenate(([0],t_exits_sorted))
+    #     tmp = np.concatenate(([0],t_exits_sorted))
     #     bins = 0.5*(tmp[:-1]+tmp[1:])
     #     widths = tmp[1:]-tmp[:-1]
     #     heights = 1/widths
@@ -1148,8 +1152,8 @@ def plot_sensor_data(ifig, sensor_data, time, initial_door_dist=None, axis = Non
     #
     # if (entries.shape[0]>0):
     #     ax4 = fig.add_subplot(414)
-    #     t_entries_sorted = sp.sort(sensor_data[entries,0])
-    #     tmp = sp.concatenate(([0],t_entries_sorted))
+    #     t_entries_sorted = np.sort(sensor_data[entries,0])
+    #     tmp = np.concatenate(([0],t_entries_sorted))
     #     bins = 0.5*(tmp[:-1]+tmp[1:])
     #     widths = tmp[1:]-tmp[:-1]
     #     heights = 1/widths

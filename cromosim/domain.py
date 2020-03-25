@@ -4,7 +4,11 @@
 # License: GPL
 
 import scipy as sp
-from scipy.misc import imread
+import numpy as np
+try:
+    from scipy.misc import imread
+except:
+    from imageio import imread
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse, Circle, Rectangle, Polygon
@@ -128,7 +132,7 @@ class Domain():
             self.width, self.height = [width, height]
         self.xmax = self.xmin + self.width*pixel_size
         self.ymax = self.ymin + self.height*pixel_size
-        self.X, self.Y = sp.meshgrid(sp.arange(self.width), sp.arange(self.height))
+        self.X, self.Y = np.meshgrid(np.arange(self.width), np.arange(self.height))
         self.X = 0.5*self.pixel_size + self.xmin + self.X*self.pixel_size
         self.Y = 0.5*self.pixel_size + self.ymin + self.Y*self.pixel_size
         self.wall_distance = None
@@ -179,51 +183,51 @@ class Domain():
                  isinstance(iw, Rectangle) or isinstance(iw, Polygon)):
                  xy = iw.get_verts()/self.pixel_size
                  xy[:,1] = self.height - xy[:,1]
-                 draw.polygon(sp.around(xy.flatten()).tolist(),
+                 draw.polygon(np.around(xy.flatten()).tolist(),
                               outline="rgb(0, 0, 0)", fill="rgb(0, 0, 0)")
             elif  isinstance(iw, Line2D):
                  linewidth = iw.get_linewidth()
                  xy = iw.get_xydata()/self.pixel_size
                  xy[:,1] = self.height - xy[:,1]
-                 draw.line(sp.around(xy.flatten()).tolist(), width=int(linewidth),
+                 draw.line(np.around(xy.flatten()).tolist(), width=int(linewidth),
                            fill="rgb(0, 0, 0)")
         for id in self.__doors:
             linewidth = id.get_linewidth()
             xy = id.get_xydata()/self.pixel_size
             xy[:,1] = self.height - xy[:,1]
-            draw.line(sp.around(xy.flatten()).tolist(), width=int(linewidth),
+            draw.line(np.around(xy.flatten()).tolist(), width=int(linewidth),
                       fill="rgb(255, 0, 0)")
         self.__image_filename = self.__name+'_domain.png'
         image.save(self.__image_filename)
         ## Easy way to convert a Pillow image to numpy arrays...
         ## The origin of img is at the top (left) and flipud allows to put it down...
-        self.image = sp.flipud(imread(self.__image_filename))
+        self.image = np.flipud(imread(self.__image_filename))
         self.image_red   = self.image[:,:,0]
         self.image_green = self.image[:,:,1]
         self.image_blue  = self.image[:,:,2]
         self.mask =  (self.image_red == 0) \
                     *(self.image_green == 0) \
                     *(self.image_blue == 0)
-        self.mask_id = sp.where( self.mask )
+        self.mask_id = np.where( self.mask )
 
     def compute_wall_distance(self):
         """
         To compute the geodesic distance to the walls in using \
         a fast-marching method
         """
-        phi = sp.ones(self.image_red.shape)
+        phi = np.ones(self.image_red.shape)
         if (len(self.mask_id[0])>0):
             phi[self.mask_id] = 0
             self.wall_distance = skfmm.distance(phi, dx=self.pixel_size)
-            grad = sp.gradient(self.wall_distance,edge_order=2)
+            grad = np.gradient(self.wall_distance,edge_order=2)
             grad_X = grad[1]/self.pixel_size
             grad_Y = grad[0]/self.pixel_size
-            norm = sp.sqrt(grad_X**2+grad_Y**2)
+            norm = np.sqrt(grad_X**2+grad_Y**2)
             norm = (norm>0)*norm+(norm==0)*0.001
             self.wall_grad_X = grad_X/norm
             self.wall_grad_Y = grad_Y/norm
         else:
-            self.wall_distance = 1.0e99*sp.ones(self.image_red.shape)
+            self.wall_distance = 1.0e99*np.ones(self.image_red.shape)
 
     def compute_desired_velocity(self):
         """
@@ -245,16 +249,16 @@ class Domain():
         mask_red = (self.image_red == 255) \
                   *(self.image_green == 0) \
                   *(self.image_blue == 0)
-        ind_red = sp.where( mask_red )
-        phi = sp.ones(self.image_red.shape)
+        ind_red = np.where( mask_red )
+        phi = np.ones(self.image_red.shape)
         phi[ind_red] = 0
-        phi = sp.ma.MaskedArray(phi, mask=self.mask)
+        phi = np.ma.MaskedArray(phi, mask=self.mask)
         self.door_distance = skfmm.distance(phi, dx=self.pixel_size)
         tmp_dist = self.door_distance.filled(9999)
-        grad = sp.gradient(tmp_dist,edge_order=2)
+        grad = np.gradient(tmp_dist,edge_order=2)
         grad_X = -grad[1]/self.pixel_size
         grad_Y = -grad[0]/self.pixel_size
-        norm = sp.sqrt(grad_X**2+grad_Y**2)
+        norm = np.sqrt(grad_X**2+grad_Y**2)
         norm = (norm>0)*norm+(norm==0)*0.001
         self.desired_velocity_X = grad_X/norm
         self.desired_velocity_Y = grad_Y/norm

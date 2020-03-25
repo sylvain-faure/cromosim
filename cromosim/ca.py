@@ -6,6 +6,7 @@
 import sys
 import random
 import scipy as sp
+import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
@@ -143,9 +144,9 @@ def compute_exit_times(dt, people, results):
     exit_times : all the exit times
     """
     Np = results.shape[0]
-    exit_times = -sp.ones(Np)
-    for id in sp.arange(Np):
-        exit_times[id] = dt*sp.where(results[id,0,:]==-1)[0].min()
+    exit_times = -np.ones(Np)
+    for id in np.arange(Np):
+        exit_times[id] = dt*np.where(results[id,0,:]==-1)[0].min()
     return exit_times
 
 
@@ -186,7 +187,7 @@ def plot_people_according_to_exit_times(ifig, dt, people, domain, results,
     exit_times = compute_exit_times(dt, people, results)
     tmp = domain.door_distance.copy()
     tmp[I0,J0] = exit_times
-    people_init = sp.ma.MaskedArray(sp.zeros(people.shape,dtype=int),
+    people_init = np.ma.MaskedArray(np.zeros(people.shape,dtype=int),
                                     mask=domain.mask)
     people_init.data[I0,J0] = 1
     ax1.imshow(tmp*(people_init==1),interpolation='nearest',
@@ -249,7 +250,7 @@ def plot_people_paths(ifig, dt, pixel_size, people, domain, results, axis = None
     exit_times = compute_exit_times(dt, people, results)
     tmp = domain.door_distance.copy()
     tmp[I0,J0] = exit_times
-    people_init = sp.ma.MaskedArray(sp.zeros(people.shape,dtype=int),
+    people_init = np.ma.MaskedArray(np.zeros(people.shape,dtype=int),
                                     mask=domain.mask)
     people_init.data[I0,J0] = 1
     vmin = (tmp*(people_init==1)).min()
@@ -258,19 +259,19 @@ def plot_people_paths(ifig, dt, pixel_size, people, domain, results, axis = None
     ax1.imshow(tmp*(people_init==1),interpolation='nearest',
                extent=[domain.xmin,domain.xmax,domain.ymin,domain.ymax],
                origin='lower',alpha = 1.0,cmap=cmap,
-               norm=colors.BoundaryNorm(boundaries=sp.linspace(vmin,vmax,cmap.N+1),
+               norm=colors.BoundaryNorm(boundaries=np.linspace(vmin,vmax,cmap.N+1),
                ncolors=cmap.N))
     mask = (results==-1)
-    traj = sp.swapaxes(sp.ma.MaskedArray(results,dtype=int, mask=mask),1,2)
+    traj = np.swapaxes(np.ma.MaskedArray(results,dtype=int, mask=mask),1,2)
     traj = traj[:,:,[1,0]]
-    col = sp.array([])
-    for id in sp.arange(Np):
-        ns = sp.where(results[id,0,:]!=-1)[0].shape[0]-1
-        col = sp.hstack((col,sp.ones(ns)*exit_times[id]))
+    col = np.array([])
+    for id in np.arange(Np):
+        ns = np.where(results[id,0,:]!=-1)[0].shape[0]-1
+        col = np.hstack((col,np.ones(ns)*exit_times[id]))
     paths = LineCollection(0.5*pixel_size+pixel_size*traj, linewidths=2,
                            linestyle="solid", cmap=cmap,
                            norm=colors.BoundaryNorm( \
-                                boundaries=sp.linspace(vmin,vmax,cmap.N+1), \
+                                boundaries=np.linspace(vmin,vmax,cmap.N+1), \
                                 ncolors=cmap.N) \
                           )
     paths.set_array(exit_times)
@@ -330,10 +331,10 @@ def sequential_update(people, people_ij, weight, shuffle = None,
     Np = people_ij.shape[0]
     height, width = people.shape
     if (randomstate == None):
-        randomstate = sp.random.RandomState()
+        randomstate = np.random.RandomState()
     #print("---------- sequential_update : shuffle = ",shuffle)
     ## Default : no shuffle update
-    order = sp.arange(Np)
+    order = np.arange(Np)
     if (shuffle == 'random'):
         ## Random shuffle update
         randomstate.shuffle(order)
@@ -348,21 +349,21 @@ def sequential_update(people, people_ij, weight, shuffle = None,
             I = [i]; J = [j]
             if (i>=1):
                 im = i-1
-                if ( (people[im,j] is not sp.ma.masked) and (people[im,j] !=1 ) ):
+                if ( (people[im,j] is not np.ma.masked) and (people[im,j] !=1 ) ):
                     I.append(im); J.append(j)
             if (i<=height-2):
                 ip = i+1
-                if ( (people[ip,j] is not sp.ma.masked) and (people[ip,j] !=1 ) ):
+                if ( (people[ip,j] is not np.ma.masked) and (people[ip,j] !=1 ) ):
                     I.append(ip); J.append(j)
             if (j>=1):
                 jm = j-1
-                if ( (people[i,jm] is not sp.ma.masked) and (people[i,jm] !=1 ) ):
+                if ( (people[i,jm] is not np.ma.masked) and (people[i,jm] !=1 ) ):
                     I.append(i); J.append(jm)
             if (j<=width-2):
                 jp = j+1
-                if ( (people[i,jp] is not sp.ma.masked) and (people[i,jp] !=1 ) ):
+                if ( (people[i,jp] is not np.ma.masked) and (people[i,jp] !=1 ) ):
                     I.append(i); J.append(jp)
-            w = weight[I,J]/sp.sum(weight[I,J])
+            w = weight[I,J]/np.sum(weight[I,J])
             #print("--------- sequential_update : I = ",I," J = ", J," w = ",w)
 
             pos = randomstate.choice(len(I), 1, p=w)
@@ -408,58 +409,58 @@ def parallel_update(people, people_ij, weight, friction = 0, randomstate = None)
     height, width = people.shape
     Np = people_ij.shape[0]
     if (randomstate == None):
-        randomstate = sp.random.RandomState()
-    new_ij = -sp.ones((Np,3)) ## new_i new_j proba
-    for id in sp.arange(Np):
+        randomstate = np.random.RandomState()
+    new_ij = -np.ones((Np,3)) ## new_i new_j proba
+    for id in np.arange(Np):
         i = people_ij[id,0]; j = people_ij[id,1]
         if ((i!=-1) and (j!=-1)):
             I = [i]; J = [j]
             if (i>=1):
                 im = i-1
-                if ( (people[im,j] is not sp.ma.masked) and (people[im,j] !=1 ) ):
+                if ( (people[im,j] is not np.ma.masked) and (people[im,j] !=1 ) ):
                     I.append(im); J.append(j)
             if (i<=height-2):
                 ip = i+1
-                if ( (people[ip,j] is not sp.ma.masked) and (people[ip,j] !=1 ) ):
+                if ( (people[ip,j] is not np.ma.masked) and (people[ip,j] !=1 ) ):
                     I.append(ip); J.append(j)
             if (j>=1):
                 jm = j-1
-                if ( (people[i,jm] is not sp.ma.masked) and (people[i,jm] !=1 ) ):
+                if ( (people[i,jm] is not np.ma.masked) and (people[i,jm] !=1 ) ):
                     I.append(i); J.append(jm)
             if (j<=width-2):
                 jp = j+1
-                if ( (people[i,jp] is not sp.ma.masked) and (people[i,jp] !=1 ) ):
+                if ( (people[i,jp] is not np.ma.masked) and (people[i,jp] !=1 ) ):
                     I.append(i); J.append(jp)
-            w = weight[I,J]/sp.sum(weight[I,J])
+            w = weight[I,J]/np.sum(weight[I,J])
             pos = randomstate.choice(len(I), 1, p=w)
             new_ij[id,0] = I[pos[0]]
             new_ij[id,1] = J[pos[0]]
             new_ij[id,2] = w[pos[0]]
-    ind = sp.where(new_ij[:,0]!=-1)[0]
+    ind = np.where(new_ij[:,0]!=-1)[0]
     # Find the conflicts
     import numpy as np
     unique_ij, index, inverse, counts = np.unique(new_ij[ind,:2], axis=0, return_index=True, return_inverse=True, return_counts=True ) ## numpy 1.13 only !!
     if (unique_ij.shape[0]<ind.shape[0]):
         for ic,cc in enumerate(counts):
             if (cc>1): ## Conflict...
-                ind_conf = sp.where(inverse==ic)[0] ## Positions of people concerned by the Conflicts
+                ind_conf = np.where(inverse==ic)[0] ## Positions of people concerned by the Conflicts
                 npc = ind_conf.shape[0] ## Number of concerned persons
                 print("---------- Conflicts between ",npc, " persons")
                 ## No agent will move to the empty cell with the probability "friction"
                 choice = randomstate.choice(2,1,p=[friction, 1-friction])[0] ## 0 = no agent move...
                 if (choice == 0):
                     print("---------- => Friction... No agent move...")
-                    for id in sp.arange(ind_conf.shape[0]):
+                    for id in np.arange(ind_conf.shape[0]):
                         new_ij[ind[ind_conf[id]],:2] = people_ij[ind[ind_conf[id]],:2]
                 else:
                     print("---------- => One agent move...")
-                    w = new_ij[ind[ind_conf],2]/sp.sum(new_ij[ind[ind_conf],2])
+                    w = new_ij[ind[ind_conf],2]/np.sum(new_ij[ind[ind_conf],2])
                     pos = randomstate.choice(ind_conf.shape[0], 1, p=w)    ## Winner
-                    for id in sp.arange(ind_conf.shape[0]):
+                    for id in np.arange(ind_conf.shape[0]):
                         if (id!=pos):
                             new_ij[ind[ind_conf[id]],:2] = people_ij[ind[ind_conf[id]],:2]
     ## Update
-    for id in sp.arange(Np):
+    for id in np.arange(Np):
         i = people_ij[id,0]; j = people_ij[id,1]
         I = int(new_ij[id,0])
         J = int(new_ij[id,1])
@@ -494,9 +495,9 @@ def exit(domain, people, people_ij):
         new people index (i,j)
     """
     Sexit = 0.2
-    ind_in = sp.where(people_ij[:,0] != -1)[0]
+    ind_in = np.where(people_ij[:,0] != -1)[0]
     d = domain.door_distance[people_ij[ind_in,0],people_ij[ind_in,1]]
-    dind = sp.where(d<Sexit)[0]
+    dind = np.where(d<Sexit)[0]
     if (dind.shape[0]>0):
         people.data[ people_ij[ind_in[dind],0], people_ij[ind_in[dind],1] ] = 0
         people_ij[ind_in[dind],:] = [-1, -1]
