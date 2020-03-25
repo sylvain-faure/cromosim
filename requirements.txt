@@ -6,4 +6,4 @@ numpydoc >=0.7.0
 sphinx >=1.6.3
 scikit-fmm >=0.0.9
 cvxopt >= 1.2.0
-'imageio>=2.8.0'
+imageio>=2.8.0
