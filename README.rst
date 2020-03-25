@@ -14,12 +14,7 @@ in the book “Crowds in equations: an introduction to the microscopic modeling
 of crowds” by B. Maury (ENS Ulm & Univ. Paris-Sud) and S. Faure (CNRS), World
 Scientific 2018, Advanced textbooks in mathematics.
 
-
-Installation (Python 3)
-========================
-
-With Pypi
----------
+Installation with Pypi:
 
 .. code::
 
@@ -32,8 +27,7 @@ or
    pip install cromosim --user
 
 
-From source
------------
+Installation from source:
 
 You can also clone the project
 
@@ -48,7 +42,6 @@ and then use the command
    python setup.py install
 
 
-Documentation
-=============
+Documentation:
 
 `<http://www.cromosim.fr>`_

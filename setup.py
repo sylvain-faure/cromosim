@@ -37,6 +37,7 @@ setup(
     name           = "cromosim",
     version        = VERSION,
     description    = README[0],
+    long_description_content_type = 'text/x-rst',
     long_description = "".join(README[1:]),
     author         = "Sylvain Faure, Bertrand Maury",
     author_email   = "sylvain.faure@math.u-psud.fr, bertrand.maury@math.u-psud.fr",
