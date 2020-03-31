@@ -17,8 +17,8 @@ CLASSIFIERS = [
     "Topic :: Scientific/Engineering :: Mathematics",
     "Topic :: Software Development :: Libraries :: Python Modules"]
 
-MAJOR = "1"
-MINOR = "1"
+MAJOR = "2"
+MINOR = "0"
 PATCH = "0"
 VERSION = "{0}.{1}.{2}".format(MAJOR, MINOR, PATCH)
 
@@ -55,6 +55,7 @@ setup(
                       'numpydoc>=0.7.0',
                       'sphinx>=1.6.3',
                       'scikit-fmm>=0.0.9',
-                      'cvxopt>=1.2.3'
+                      'cvxopt>=1.2.3',
+                      'imread>=0.7.1'
                       ],
 )

@@ -7,6 +7,9 @@
 name = "cromosim"
 
 from .domain import Domain
+from .domain import Destination
+from .map import Target
+from .map import Map
 from . import ca
 from . import ftl
 from . import micro

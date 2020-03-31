@@ -5,7 +5,11 @@
 
 import sys
 import scipy as sp
-from scipy.misc import imread
+try:
+    from scipy.misc import imread
+except:
+    from imread import imread
+
 #from scipy.spatial import KDTree
 from scipy.spatial import cKDTree
 from scipy.sparse import csr_matrix
@@ -68,43 +72,13 @@ def compute_contacts(dom, people, dmax):
     DP = DP[ind]
     contacts = sp.stack([I,J,Dij,DP[:,0]/Norm,DP[:,1]/Norm],axis=1)
     # Add contacts with the walls
-    II = sp.floor((people[:,1]-dom.ymin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
-    JJ = sp.floor((people[:,0]-dom.xmin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
-    DD = dom.wall_distance[II,JJ] - people[:,2]
+    II,JJ,DD = dom.people_wall_distance(people)
     ind = sp.where(DD<dmax)[0]
     wall_contacts = sp.stack([ind,-1*sp.ones(ind.shape),DD[ind],
                               dom.wall_grad_X[II[ind],JJ[ind]],
                               dom.wall_grad_Y[II[ind],JJ[ind]]  ],axis=1)
     contacts = sp.vstack([contacts,wall_contacts])
     return sp.array(contacts)
-
-def compute_desired_velocity(dom, people):
-    """
-    This function determines people desired velocities from the desired \
-    velocity array computed by Domain thanks to a fast-marching method.
-
-    Parameters
-    ----------
-    dom: Domain
-        contains everything for managing the domain
-    people: numpy array
-        people coordinates and radius : x,y,r
-
-    Returns
-    -------
-    I : numpy array
-        people index i
-    J : numpy array
-        people index j
-    Vd : numpy array
-        people desired velocity
-    """
-    I = sp.floor((people[:,1]-dom.ymin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
-    J = sp.floor((people[:,0]-dom.xmin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
-    Vd = sp.zeros( (people.shape[0],2) )
-    Vd[:,0] = dom.desired_velocity_X[I,J]
-    Vd[:,1] = dom.desired_velocity_Y[I,J]
-    return I,J,Vd
 
 def compute_forces(F, Fwall, people, contacts, U, Vd, lambda_, delta, k, eta):
     """
@@ -225,6 +199,8 @@ def projection(dt, people, contacts, Vd, dmin = 0.0, \
 
     Returns
     -------
+    info: integer
+        number of iterations needed
     B: numpy array
         constraint matrix
     U: numpy array
@@ -234,8 +210,6 @@ def projection(dt, people, contacts, Vd, dmin = 0.0, \
         Lagrange multipliers (only when method='uzawa', None otherwise)
     P: numpy array
         pressure on each individual (only when method='uzawa', None otherwise)
-    info: integer
-        number of iterations needed
     """
     Np = people.shape[0]
     Nc = contacts.shape[0]
@@ -424,9 +398,7 @@ def exit_door(sexit, dom, people, U, arrays=[]):
     arrays: list of numpy array
         new array resized
     """
-    I = sp.floor((people[:,1]-dom.ymin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
-    J = sp.floor((people[:,0]-dom.xmin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
-    D = dom.door_distance[I,J]
+    I,J,D = dom.people_target_distance(people)
     ind = sp.where(D>sexit)
     if (len(arrays)>0):
         return people[ind[0],:], U[ind[0],:], [ a[ind[0]] for a in arrays]
@@ -475,10 +447,8 @@ def exit_out_of_domain(dom, people, arrays=[], box=None):
         for a in arrays:
             a = a[ind]
     ## Remove people who are too close to walls or with a masked door distance
-    I = sp.floor((people[:,1]-dom.ymin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
-    J = sp.floor((people[:,0]-dom.xmin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
-    Dwall = dom.wall_distance[I,J]-people[:,2]
-    Ddoor = dom.door_distance[I,J]
+    I,J,Dwall = dom.people_wall_distance(people)
+    I,J,Ddoor = dom.people_door_distance(people, I=I, J=J)
     indDwall = sp.where(Dwall<=dom.pixel_size)[0]
     indDdoor = sp.where(Ddoor.mask==True)[0]
     ind = sp.unique(sp.concatenate((indDwall,indDdoor)))
@@ -577,7 +547,7 @@ def periodic_bc_vertical(ymin, ymax, people, U, xmin=None, xmax=None, rng=None):
     return people, U
 
 
-def create_people_in_box(np, box, rmin, rmax, dom, rng):
+def create_people_in_box(np, box, rmin, rmax, dom, rng, verbose=True):
     """
     To create np persons in a given box. The overlaps are not treated for \
     the moment but one checks that the individuals are located in an area where \
@@ -598,13 +568,16 @@ def create_people_in_box(np, box, rmin, rmax, dom, rng):
         contains everything for managing the domain
     rng: RandomState
         scipy random state object (see scipy.random.RandomState)
+    verbose: boolean
+        logs for debug
 
     Returns
     -------
     p: numpy array
         new people coordinates x y r
     """
-    print("------ create_people_in_box --> Create "+str(np)+ \
+    if (verbose):
+        print("------ create_people_in_box --> Create "+str(np)+ \
           " individuals in the box "+str(box)+", overlaps can occur...")
     p = sp.zeros((np,3))  # x y r
     p[:,2] = rng.uniform(rmin, rmax, np)
@@ -615,7 +588,7 @@ def create_people_in_box(np, box, rmin, rmax, dom, rng):
     ## To check if people are well localized in the domain
     ## i.e. where a desired velocity is defined
     while True:
-        I, J, Vd = compute_desired_velocity(dom, p)
+        I, J, Vd = dom.people_desired_velocity(p)
         normVd = Vd[:,0]**2+Vd[:,1]**2
         ind = sp.where(normVd==0)[0]
         if (ind.shape[0]>0):
@@ -626,7 +599,7 @@ def create_people_in_box(np, box, rmin, rmax, dom, rng):
     return p
 
 
-def check_people_in_box(dom, box, p, rng):
+def check_people_in_box(dom, box, p, rng, verbose=True):
     """
     To check that people coordinates are in the given box (test 1) and in an \
     usable space i.e. in an area accessible and not concerned by obstacles \
@@ -643,6 +616,8 @@ def check_people_in_box(dom, box, p, rng):
         people coordinates x y r
     rng: RandomState
         scipy random state object (see scipy.random.RandomState)
+    verbose: boolean
+        logs for debug
 
     Returns
     -------
@@ -650,7 +625,8 @@ def check_people_in_box(dom, box, p, rng):
         new people coordinates x y r
 
     """
-    print("------ check_people_in_box --> To verify that "+str(p.shape[0])+ \
+    if (verbose):
+        print("------ check_people_in_box --> To verify that "+str(p.shape[0])+ \
           " individuals are in the domain, in the box and with a defined"+ \
           " desired velocity")
     p_rmax = p[:,2].max()
@@ -663,31 +639,34 @@ def check_people_in_box(dom, box, p, rng):
         test1 = (I>=0)*(I<dom.height)*(J>=0)*(J<dom.width)
         ind1 = sp.where(test1==0)[0]
         if (ind1.shape[0]>0):
-            print("------ check_people_in_box --> "+str(ind1.shape[0])+ \
+            if (verbose):
+                print("------ check_people_in_box --> "+str(ind1.shape[0])+ \
                   " individuals outside the domain")
             info = True
             p[ind1,0] = rng.uniform(xmin+p_rmax, xmax-p_rmax, ind1.shape[0])
             p[ind1,1] = rng.uniform(ymin+p_rmax, ymax-p_rmax, ind1.shape[0])
         else:
             ## test 2
-            I, J, Vd = compute_desired_velocity(dom, p)
+            I, J, Vd = dom.people_desired_velocity(p)
             normVd = Vd[:,0]**2+Vd[:,1]**2
             test2 = (p[:,0]>xmin+p_rmax)*(p[:,0]<xmax-p_rmax) \
                   *(p[:,1]>ymin+p_rmax)*(p[:,1]<ymax-p_rmax) \
                   *(normVd>0)
             ind2 = sp.where(test2==0)[0]
             if (ind2.shape[0]>0):
-                print("------ check_people_in_box --> "+str(ind2.shape[0])+ \
+                if (verbose):
+                    print("------ check_people_in_box --> "+str(ind2.shape[0])+ \
                       " individuals with an undefined desired velocity ")
                 info = True
                 p[ind2,0] = rng.uniform(xmin+p_rmax, xmax-p_rmax, ind2.shape[0])
                 p[ind2,1] = rng.uniform(ymin+p_rmax, ymax-p_rmax, ind2.shape[0])
             else:
-                print("------ check_people_in_box --> OK !")
+                if (verbose):
+                    print("------ check_people_in_box --> OK !")
                 break
     return info, p
 
-def remove_overlaps_in_box(dom, box, p, dt, rng, dmin, itermax=10):
+def remove_overlaps_in_box(dom, box, p, dt, rng, dmin, itermax=10, verbose=True):
     """
     To remove the overlaps between individuals (spheres) in the given box. \
     Several Uzawa projections are used to give a better robustness to this \
@@ -710,6 +689,8 @@ def remove_overlaps_in_box(dom, box, p, dt, rng, dmin, itermax=10):
         minimal distance allowed between individuals
     itermax: integer
         maximal number of Uzawa projections (10 by default)
+    verbose: boolean
+        logs for debug
 
     Returns
     -------
@@ -717,32 +698,36 @@ def remove_overlaps_in_box(dom, box, p, dt, rng, dmin, itermax=10):
         new people coordinates x y r
 
     """
-    print("------ remove_overlaps_in_box --> Remove overlaps...")
+    if (verbose):
+        print("------ remove_overlaps_in_box --> Remove overlaps...")
     dmax_init = p[:,2].max()
     it1 = 0
     t = 0
     while (True):
-        print("------ remove_overlaps_in_box --> Remove overlaps in box "+ \
+        if (verbose):
+            print("------ remove_overlaps_in_box --> Remove overlaps in box "+ \
               str(box)+": iteration "+str(it1)+" / "+str(itermax))
         c = compute_contacts(dom, p, dmax_init)
-        I, J, Vd = compute_desired_velocity(dom, p)
+        I, J, Vd = dom.people_desired_velocity(p)
         info1, B, U, L, P = projection(dt, p, c, Vd, dmin = dmin, \
                                              nb_iter_max = 10000, log = False)
         p = move_people(t, dt, p, U)
         it1 += 1
-        info2, people = check_people_in_box(dom, box, p, rng)
+        info2, people = check_people_in_box(dom, box, p, rng, verbose=verbose)
         if ((info1>=0) and (info2==False)):
-            print("------ remove_overlaps_in_box --> Successful... No overlaps")
+            if (verbose):
+                print("------ remove_overlaps_in_box --> Successful... No overlaps")
             break
         if (it1>=itermax):
-            print("------ remove_overlaps_in_box --> ** WARNING : Unsuccessful initialization **")
-            print("------ remove_overlaps_in_box --> ** WARNING : Let us continue...")
+            if (verbose):
+                print("------ remove_overlaps_in_box --> ** WARNING : Unsuccessful initialization **")
+                print("------ remove_overlaps_in_box --> ** WARNING : Let us continue...")
             break
     return p
 
 
 def people_initialization(N, init_people_box, dom, dt, rmin, rmax, dmin=0,
-                          seed=0, itermax=10):
+                          seed=0, itermax=10, verbose=True):
     """
     To initialize people array (xyr) with coordinates in several boxes and \
     without overlaps between them.
@@ -768,6 +753,8 @@ def people_initialization(N, init_people_box, dom, dt, rmin, rmax, dmin=0,
         at each run)
     itermax: integer
         maximal number of Uzawa projections (10 by default)
+    verbose: boolean
+        logs for debug
 
     Returns
     -------
@@ -778,12 +765,14 @@ def people_initialization(N, init_people_box, dom, dt, rmin, rmax, dmin=0,
     rng: RandomState
         scipy random state object (see scipy.random.RandomState)
     """
-    print("\n =================> INITIALIZATION : PEOPLE POSITIONS")
+    if (verbose):
+        print("\n =================> INITIALIZATION : PEOPLE POSITIONS")
     ## To initialize people positions
     rng = sp.random.RandomState()
     if (seed>0):
         rng = sp.random.RandomState(seed)
-    print("=================> INITIALIZATION : SEED = ",rng.get_state()[1][0])
+    if (verbose):
+        print("=================> INITIALIZATION : SEED = ",rng.get_state()[1][0])
     ## People properties : radius and initial random coordinates
     ## overlaps can occur...
     people = sp.zeros((N.sum(),3))  # x y r
@@ -792,21 +781,26 @@ def people_initialization(N, init_people_box, dom, dt, rmin, rmax, dmin=0,
     ## Loop over all the boxes where we are supposed to put individuals at
     ## the initializations
     for ip,np in enumerate(N):
-        print("=================> INITIALIZATION : "+str(np)+" IN BOX "+ \
+        if (verbose):
+            print("=================> INITIALIZATION : "+str(np)+" IN BOX "+ \
               str(init_people_box[ip]))
-        pp = create_people_in_box(np, init_people_box[ip], rmin, rmax, dom, rng)
+        pp = create_people_in_box(np, init_people_box[ip], rmin, rmax, dom, rng,
+                                    verbose=verbose)
         pp = remove_overlaps_in_box(dom, init_people_box[ip], pp, dt, rng,
-                                    dmin, itermax=itermax)
+                                    dmin, itermax=itermax, verbose=verbose)
         people[pos:pos+np,0] = pp[:,0]
         people[pos:pos+np,1] = pp[:,1]
         people[pos:pos+np,2] = pp[:,2]
         people_init_box_id[pos:pos+np] = ip
         pos += np
-    print("=================> INITIALIZATION : LAST STEP (remove the overlaps"+ \
+    if (verbose):
+        print("=================> INITIALIZATION : LAST STEP (remove the overlaps"+ \
           " between individuals in different boxes...)")
     people = remove_overlaps_in_box(dom, [dom.xmin, dom.xmax, dom.ymin, dom.ymax],
-                                    people, dt, rng, dmin, itermax=itermax)
-    print("=================> INITIALIZATION : END ! \n")
+                                    people, dt, rng, dmin, itermax=itermax,
+                                    verbose=verbose)
+    if (verbose):
+        print("=================> INITIALIZATION : END ! \n")
     return people, people_init_box_id, rng
 
 
@@ -936,17 +930,12 @@ def add_people_in_box(Np, dom, xmin, xmax, ymin, ymax, rmin, rmax, rng):
     people[:,0] = rng.uniform(xmin, xmax, Np)
     people[:,1] = rng.uniform(ymin, ymax, Np)
     people[:,2] = rng.uniform(rmin, rmax, Np)
-    I = sp.floor((people[:,1]-dom.ymin-0.5*px)/px).astype(int)
-    J = sp.floor((people[:,0]-dom.xmin-0.5*px)/px).astype(int)
-
-    D = dom.wall_distance[I,J]-people[:,2]
+    I,J,D = dom.people_wall_distance(people)
     ind = sp.where(D<=px)
     while (ind[0].shape[0]>0):
         people[ind[0],0] = rng.uniform(xmin, xmax, ind[0].shape[0])
         people[ind[0],1] = rng.uniform(ymin, ymax, ind[0].shape[0])
-        I = sp.floor((people[:,1]-dom.ymin-0.5*px)/px).astype(int)
-        J = sp.floor((people[:,0]-dom.xmin-0.5*px)/px).astype(int)
-        D = dom.wall_distance[I,J]-people[:,2]
+        I,J,D = dom.people_wall_distance(people)
         ind = sp.where(D<=px)
     return people
 
@@ -954,7 +943,7 @@ def add_people_in_box(Np, dom, xmin, xmax, ymin, ymax, rmin, rmax, rng):
 def plot_people(ifig, dom, people, contacts, U, colors, time=-1, axis=None,
                 plot_people=True, plot_contacts=True, plot_velocities=True,
                 plot_paths=False,paths=None,plot_sensors=False,sensors=[],
-                savefig=False, filename='fig.png', cmap='winter'):
+                savefig=False, filename='fig.png', dpi = 150, cmap='winter'):
     """
     This function draws spheres for the individuals, \
     lines for the active contacts and arrows for the \
@@ -992,6 +981,8 @@ def plot_people(ifig, dom, people, contacts, U, colors, time=-1, axis=None,
         writes the figure as a png file if true
     filename: string
         png filename used to write the figure
+    dpi : integer
+        number of pixel per inch for the saved figure
     cmap: string
         matplotlib colormap name
     """
@@ -1057,12 +1048,12 @@ def plot_people(ifig, dom, people, contacts, U, colors, time=-1, axis=None,
         ax1.set_title('time = {:.2F}'.format(time)+' s')
     fig.canvas.draw()
     if (savefig):
-        fig.savefig(filename,dpi=600,bbox_inches='tight',pad_inches=0)
+        fig.savefig(filename,dpi=dpi,bbox_inches='tight',pad_inches=0)
 
 
 def plot_sensor_data(ifig, sensor_data, time, initial_door_dist=None, axis = None, \
                      flux_timestep=1, \
-                     savefig=False, filename='fig.png', cmap='winter'):
+                     savefig=False, filename='fig.png', dpi=150, cmap='winter'):
     """
     When a sensor line is defined this function allows to draw the \
     repartition of the people exit times.
@@ -1086,6 +1077,8 @@ def plot_sensor_data(ifig, sensor_data, time, initial_door_dist=None, axis = Non
         writes the figure as a png file if true
     filename: string
         png filename used to write the figure
+    dpi : integer
+        number of pixel per inch for the saved figure
     cmap: string
         matplotlib colormap name
     """
@@ -1157,4 +1150,4 @@ def plot_sensor_data(ifig, sensor_data, time, initial_door_dist=None, axis = Non
     fig.set_tight_layout(True)
     fig.canvas.draw()
     if (savefig):
-        fig.savefig(filename,dpi=300)
+        fig.savefig(filename,dpi=dpi)

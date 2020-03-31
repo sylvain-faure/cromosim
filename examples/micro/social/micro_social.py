@@ -164,25 +164,25 @@ else:
 ## To add lines : Line2D(xdata, ydata, linewidth)
 for xy in wall_lines:
     line = Line2D( xy[0],xy[1], linewidth=8)
-    dom.add_wall(line)
+    dom.add_wall_shape(line)
 ## To add ellipses : Ellipse( (x_center,y_center), width, height, angle_in_degrees_anti-clockwise )
 for e in wall_ellipses:
     ellipse = Ellipse( (e[0], e[1]), e[2], e[3], e[4])
-    dom.add_wall(ellipse)
+    dom.add_wall_shape(ellipse)
 ## To add polygons : Polygon( xy )
 for p in wall_polygons:
     polygon = Polygon(p)
-    dom.add_wall(polygon)
+    dom.add_wall_shape(polygon)
 ## To add doors :
 for xy in door_lines:
     line = Line2D( xy[0],xy[1], linewidth=8)
-    dom.add_door(line)
+    dom.add_door_shape(line)
 ## To build the domain : background + shapes
 dom.build_domain()
 ## To compute the distance to the walls
-dom.compute_wall_distance()
+#dom.compute_wall_distance()
 ## To compute the desired velocity
-dom.compute_desired_velocity()
+#dom.compute_desired_velocity()
 ## To show the domain dimensions
 print("===> Domain : ",dom)
 print("===> Wall lines : ",wall_lines)
@@ -218,7 +218,7 @@ cc = 0
 counter = 0
 while (t<Tf):
     contacts = compute_contacts(dom, people, dmax)
-    I, J, Vd = compute_desired_velocity(dom, people)
+    I, J, Vd = dom.people_desired_velocity(people)
     if ((cc>=drawper) or (counter==0)):
         print("===> time = ",t," number of persons = ",Np)
         plot_people(10, dom, people, contacts, Vd, people[:,2], time=t,

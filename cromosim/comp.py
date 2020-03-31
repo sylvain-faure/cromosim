@@ -5,7 +5,10 @@
 
 import sys
 import scipy as sp
-from scipy.misc import imread
+try:
+    from scipy.misc import imread
+except:
+    from imread import imread
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D

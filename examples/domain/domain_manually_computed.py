@@ -37,11 +37,11 @@ yd = 2.5
 
 ## Line2D(xdata, ydata, linewidth)
 line = Line2D( [x2,x3,x3,x0,x0,x1],[y0,y0,y1,y1,y0,y0], 2)
-dom.add_wall(line)
+dom.add_wall_shape(line)
 
 ## Line2D(xdata, ydata, linewidth)
 line = Line2D( [x1,x2],[y0,y0], linewidth=2)
-dom.add_door(line)
+dom.add_door_shape(line)
 
 dom.build_domain()
 
