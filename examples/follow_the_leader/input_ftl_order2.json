@@ -7,7 +7,7 @@
   "periodicity":false,
   "tau":0.5,
   "V_leader":"1.25*(1 - (t>=15.0)*(t<=35.0))",
-  "speed_function":"0*(w<0.3) + (w>=0.3)*1.25*(1.0 - sp.exp(-(w-0.3)/0.9))",
+  "speed_function":"0*(w<0.3) + (w>=0.3)*1.25*(1.0 - np.exp(-(w-0.3)/0.9))",
   "T":60.0,
   "dt":0.01,
   "prefix":"results/",

@@ -4,6 +4,10 @@
 # License: GPL
 
 import scipy as sp
+<<<<<<< HEAD
+=======
+import numpy as np
+>>>>>>> 680862a0447594077e44b73b1b1f0908dfdc3a94
 try:
     from scipy.misc import imread
 except:
@@ -156,6 +160,7 @@ class Domain():
         npzfile : string
             to build domain from a npz file which contains all variables
         """
+<<<<<<< HEAD
         if (npzfile is None):
             self.__shapes = []
             self.__outline_color_shapes = []
@@ -188,6 +193,32 @@ class Domain():
             else:
                 self.image =  Image.new("RGB", (self.width, self.height), "white")
             self.draw = ImageDraw.Draw(self.image)
+=======
+        self.__walls = []
+        self.__doors = []
+        self.__image_filename = ''
+        self.__name = name
+        self.__background = background
+        self.pixel_size = pixel_size
+        self.xmin, self.ymin = [xmin, ymin]
+        if (self.__background != 'White'):
+            image = imread(self.__background)
+            self.width = image.shape[1]  ## width = number of columns
+            self.height = image.shape[0] ## height = number of rows
+        else:
+            self.width, self.height = [width, height]
+        self.xmax = self.xmin + self.width*pixel_size
+        self.ymax = self.ymin + self.height*pixel_size
+        self.X, self.Y = np.meshgrid(np.arange(self.width), np.arange(self.height))
+        self.X = 0.5*self.pixel_size + self.xmin + self.X*self.pixel_size
+        self.Y = 0.5*self.pixel_size + self.ymin + self.Y*self.pixel_size
+        self.wall_distance = None
+        self.wall_grad_X = None
+        self.wall_grad_Y = None
+        self.desired_velocity_X = None
+        self.desired_velocity_Y = None
+        self.door_distance = None
+>>>>>>> 680862a0447594077e44b73b1b1f0908dfdc3a94
 
         else:
             data = sp.load(npzfile,allow_pickle=True)
@@ -344,14 +375,44 @@ class Domain():
         To build the domain : reads the background image (if supplied) \
         and initializes all the color arrrays
         """
+<<<<<<< HEAD
         self.__image_filename = self.name+'_domain.png'
         self.image.save(self.__image_filename)
+=======
+        if (self.__background != 'White'):
+            image = Image.open(self.__background)
+        else:
+            image =  Image.new("RGB", (self.width, self.height), "white")
+        draw = ImageDraw.Draw(image)
+        for iw in self.__walls:
+            if ( isinstance(iw, Circle) or isinstance(iw, Ellipse) or
+                 isinstance(iw, Rectangle) or isinstance(iw, Polygon)):
+                 xy = iw.get_verts()/self.pixel_size
+                 xy[:,1] = self.height - xy[:,1]
+                 draw.polygon(np.around(xy.flatten()).tolist(),
+                              outline="rgb(0, 0, 0)", fill="rgb(0, 0, 0)")
+            elif  isinstance(iw, Line2D):
+                 linewidth = iw.get_linewidth()
+                 xy = iw.get_xydata()/self.pixel_size
+                 xy[:,1] = self.height - xy[:,1]
+                 draw.line(np.around(xy.flatten()).tolist(), width=int(linewidth),
+                           fill="rgb(0, 0, 0)")
+        for id in self.__doors:
+            linewidth = id.get_linewidth()
+            xy = id.get_xydata()/self.pixel_size
+            xy[:,1] = self.height - xy[:,1]
+            draw.line(np.around(xy.flatten()).tolist(), width=int(linewidth),
+                      fill="rgb(255, 0, 0)")
+        self.__image_filename = self.__name+'_domain.png'
+        image.save(self.__image_filename)
+>>>>>>> 680862a0447594077e44b73b1b1f0908dfdc3a94
         ## Easy way to convert a Pillow image to numpy arrays...
         ## The origin of img is at the top (left) and flipud allows to put it down...
-        self.image = sp.flipud(imread(self.__image_filename))
+        self.image = np.flipud(imread(self.__image_filename))
         self.image_red   = self.image[:,:,0]
         self.image_green = self.image[:,:,1]
         self.image_blue  = self.image[:,:,2]
+<<<<<<< HEAD
         self.wall_mask = sp.zeros_like(self.image_red)
         for c in self.wall_colors:
             self.wall_mask += (self.image_red == c[0]) \
@@ -366,25 +427,37 @@ class Domain():
             print("WARNING : Wall colors are ",self.wall_colors)
             print("WARNING : Check that there are pixels with these colors!")
             sys.exit()
+=======
+        self.mask =  (self.image_red == 0) \
+                    *(self.image_green == 0) \
+                    *(self.image_blue == 0)
+        self.mask_id = np.where( self.mask )
+>>>>>>> 680862a0447594077e44b73b1b1f0908dfdc3a94
 
     def compute_wall_distance(self):
         """
         To compute the geodesic distance to the walls in using \
         a fast-marching method
         """
+<<<<<<< HEAD
         phi = sp.ones(self.image_red.shape)
         if (len(self.wall_id[0])>0):
             phi[self.wall_id] = 0
+=======
+        phi = np.ones(self.image_red.shape)
+        if (len(self.mask_id[0])>0):
+            phi[self.mask_id] = 0
+>>>>>>> 680862a0447594077e44b73b1b1f0908dfdc3a94
             self.wall_distance = skfmm.distance(phi, dx=self.pixel_size)
-            grad = sp.gradient(self.wall_distance,edge_order=2)
+            grad = np.gradient(self.wall_distance,edge_order=2)
             grad_X = grad[1]/self.pixel_size
             grad_Y = grad[0]/self.pixel_size
-            norm = sp.sqrt(grad_X**2+grad_Y**2)
+            norm = np.sqrt(grad_X**2+grad_Y**2)
             norm = (norm>0)*norm+(norm==0)*0.001
             self.wall_grad_X = grad_X/norm
             self.wall_grad_Y = grad_Y/norm
         else:
-            self.wall_distance = 1.0e99*sp.ones(self.image_red.shape)
+            self.wall_distance = 1.0e99*np.ones(self.image_red.shape)
 
     def add_destination(self, dest):
         """
@@ -403,6 +476,7 @@ class Domain():
         desired_velocity_Y : numpy array
             opposite of the gradient of the door distance, y component
         """
+<<<<<<< HEAD
 
         ## Compute desired velocities to this destination, in this domain...
 
@@ -458,9 +532,21 @@ class Domain():
             grad[1][indices] = -rgbgrad[3]
             grad[0][indices] = -rgbgrad[4]
 
+=======
+        mask_red = (self.image_red == 255) \
+                  *(self.image_green == 0) \
+                  *(self.image_blue == 0)
+        ind_red = np.where( mask_red )
+        phi = np.ones(self.image_red.shape)
+        phi[ind_red] = 0
+        phi = np.ma.MaskedArray(phi, mask=self.mask)
+        self.door_distance = skfmm.distance(phi, dx=self.pixel_size)
+        tmp_dist = self.door_distance.filled(9999)
+        grad = np.gradient(tmp_dist,edge_order=2)
+>>>>>>> 680862a0447594077e44b73b1b1f0908dfdc3a94
         grad_X = -grad[1]/self.pixel_size
         grad_Y = -grad[0]/self.pixel_size
-        norm = sp.sqrt(grad_X**2+grad_Y**2)
+        norm = np.sqrt(grad_X**2+grad_Y**2)
         norm = (norm>0)*norm+(norm==0)*0.001
         dest.desired_velocity_X = grad_X/norm
         dest.desired_velocity_Y = grad_Y/norm

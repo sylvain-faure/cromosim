@@ -8,6 +8,7 @@
 # License: GPL
 
 import sys, os
+import numpy as np
 from cromosim import *
 from cromosim.ca import *
 from optparse import OptionParser
@@ -136,16 +137,16 @@ print("===> Door lines : ",door_lines)
 ## Current time
 t = 0
 
-people = sp.ma.MaskedArray(sp.zeros((height,width),dtype=int), mask=dom.mask)
+people = np.ma.MaskedArray(np.zeros((height,width),dtype=int), mask=dom.mask)
 
 ## Number of cells
 Nc = height*width - dom.mask_id[0].shape[0]
 print("===> Number of cells = ",Nc)
 
 ## People initialisation taking to account masked positions
-rng = sp.random.RandomState()
+rng = np.random.RandomState()
 if (seed>0):
-    rng = sp.random.RandomState(seed)
+    rng = np.random.RandomState(seed)
 print("===> seed  = ",rng.get_state()[1][0])
 
 s = 0
@@ -162,18 +163,18 @@ while (s != Np):
     #            rng.randint(jmin+int(0.25*(jmax-jmin)),
     #                        jmax-int(0.25*(jmax-jmin))+1,Np-s)] = 1
     people.data[rng.randint(imin,imax+1,Np-s),rng.randint(jmin,jmax+1,Np-s)] = 1
-    s = sp.sum(people)
-ind = sp.where(people==1)
-people_ij = -sp.ones((Np,2),dtype=int)# i(0<=i<=height-1) j(0<=j<=width-1)
+    s = np.sum(people)
+ind = np.where(people==1)
+people_ij = -np.ones((Np,2),dtype=int)# i(0<=i<=height-1) j(0<=j<=width-1)
 people_ij[:,0] = ind[0]
 people_ij[:,1] = ind[1]
 #print("===> Init : people_ij = ",people_ij)
 
 ## Array to store the results
-results = sp.copy(people_ij).reshape((Np,2,1))
+results = np.copy(people_ij).reshape((Np,2,1))
 
 ## Static Floor Field
-weight = sp.exp(-kappa*dom.door_distance)
+weight = np.exp(-kappa*dom.door_distance)
 
 cc = 0
 iter = 0
@@ -182,7 +183,7 @@ plot_people_according_to_current_door_distance(1, people, dom,
     savefig=True, filename=prefix+'/cellular_automata_'+str(iter).zfill(6)+'.png')
 #plot_people_according_to_initial_door_distance(2, people, dom, results)
 
-while (sp.sum(people)>0):
+while (np.sum(people)>0):
     if (update_strategy == "parallel"):
         people, people_ij = parallel_update(people, people_ij, weight,
                                             friction = 0)
@@ -193,11 +194,11 @@ while (sp.sum(people)>0):
         print("Bad value for update strategy... EXIT")
         sys.exit()
     people, people_ij = exit(dom, people, people_ij)
-    results = sp.concatenate((results,people_ij.reshape((Np,2,1))), axis=2)
+    results = np.concatenate((results,people_ij.reshape((Np,2,1))), axis=2)
     t += dt
     cc += 1
     iter += 1
-    print("========> time = ",t," number of persons = ",sp.sum(people))
+    print("========> time = ",t," number of persons = ",np.sum(people))
     if (cc>=drawper):
         plot_people_according_to_current_door_distance(1, people, dom,
             savefig=True, filename=prefix+'/cellular_automata_'+str(iter).zfill(6)+'.png')

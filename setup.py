@@ -17,9 +17,15 @@ CLASSIFIERS = [
     "Topic :: Scientific/Engineering :: Mathematics",
     "Topic :: Software Development :: Libraries :: Python Modules"]
 
+<<<<<<< HEAD
 MAJOR = "2"
 MINOR = "0"
 PATCH = "0"
+=======
+MAJOR = "1"
+MINOR = "1"
+PATCH = "1"
+>>>>>>> 680862a0447594077e44b73b1b1f0908dfdc3a94
 VERSION = "{0}.{1}.{2}".format(MAJOR, MINOR, PATCH)
 
 def write_version_py(filename='cromosim/version.py'):
@@ -37,6 +43,7 @@ setup(
     name           = "cromosim",
     version        = VERSION,
     description    = README[0],
+    long_description_content_type = 'text/x-rst',
     long_description = "".join(README[1:]),
     author         = "Sylvain Faure, Bertrand Maury",
     author_email   = "sylvain.faure@math.u-psud.fr, bertrand.maury@math.u-psud.fr",
@@ -48,6 +55,7 @@ setup(
     packages       = ["cromosim"],
     include_package_data=True,
     install_requires=[
+<<<<<<< HEAD
                       'numpy>=1.11.0',
                       'scipy>=0.19.1',
                       'Pillow>=1.1.7',
@@ -57,5 +65,16 @@ setup(
                       'scikit-fmm>=0.0.9',
                       'cvxopt>=1.2.3',
                       'imread>=0.7.1'
+=======
+                      'numpy>=1.18.0',
+                      'scipy>=1.4.0',
+                      'Pillow>=6.0.0',
+                      'matplotlib>=3.1.0',
+                      'numpydoc>=0.9.0',
+                      'sphinx>=2.4.0',
+                      'scikit-fmm>=2019.1.30',
+                      'cvxopt>=1.2.0',
+                      'imageio>=2.8.0'
+>>>>>>> 680862a0447594077e44b73b1b1f0908dfdc3a94
                       ],
 )

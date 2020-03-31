@@ -15,6 +15,7 @@ import os
 from optparse import OptionParser
 import json
 import scipy as sp
+import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import cromosim.ftl as ftl
@@ -80,23 +81,23 @@ xmin_t0 = input["xmin_t0"]
 xmax_t0 = input["xmax_t0"]
 
 # To build tgrid, Nt is the number of time iterations
-Nt = int(sp.floor(T/dt))+1
+Nt = int(np.floor(T/dt))+1
 Nt += (Nt*dt<T)
-tgrid = dt*sp.arange(Nt)
+tgrid = dt*np.arange(Nt)
 tgrid[-1] = min(T,tgrid[-1])
 
 # data : array where the positions and the velocities will be stored
-data = sp.zeros((N,2,Nt))
+data = np.zeros((N,2,Nt))
 
 # Iteration counter
 counter = 0
 
 # Initialization
 time = 0.0
-Xold = sp.linspace(xmin_t0, xmax_t0, N)
-Vold = sp.zeros(Xold.shape)
+Xold = np.linspace(xmin_t0, xmax_t0, N)
+Vold = np.zeros(Xold.shape)
 data[:,0,counter] = Xold
-shift = sp.zeros(Xold.shape)
+shift = np.zeros(Xold.shape)
 
 
 # Time loop
@@ -119,7 +120,7 @@ while (time < T-0.5*dt):
     else:
         print("Bad model name... EXIT")
         sys.exit()
-    ind = sp.where((X-Xold<0))[0]
+    ind = np.where((X-Xold<0))[0]
     shift[ind] += L
     data[:,0,counter] = X + shift
     data[:,1,counter] = V

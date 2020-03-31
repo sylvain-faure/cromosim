@@ -5,6 +5,7 @@
 
 import sys
 import scipy as sp
+import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -42,9 +43,9 @@ def update_positions_ftl_order_1(L, X, t, dt, Phi, periodicity=True,
     """
     if (periodicity == True):
         # No leader
-        S = sp.argsort(X)
+        S = np.argsort(X)
         W = X[S[1:]] - X[S[:-1]]
-        W = sp.append(W,(X[S[0]]+L) - X[S[-1]])
+        W = np.append(W,(X[S[0]]+L) - X[S[-1]])
         V = Phi(W)
         Xnew = X[S] + dt*V
         Xnew1 = Xnew*(Xnew<L) + (Xnew-L)*(Xnew>=L)
@@ -55,7 +56,7 @@ def update_positions_ftl_order_1(L, X, t, dt, Phi, periodicity=True,
         W = X[1:]-X[:-1]
         VV = Phi(W)
         VL = V_leader(t)
-        V = sp.append(VV,VL)
+        V = np.append(VV,VL)
         Xnew = X+dt*V
     return Xnew, V
 
@@ -98,9 +99,9 @@ def update_positions_ftl_order_2(L, X, U, t, dt, tau, Phi, periodicity=True,
     """
     if (periodicity == True):
         # No leader
-        S = sp.argsort(X)
+        S = np.argsort(X)
         W = X[S[1:]]-X[S[:-1]]
-        W = sp.append(W,(X[S[0]]+L)-X[S[-1]])
+        W = np.append(W,(X[S[0]]+L)-X[S[-1]])
         V = Phi(W)
         Unew = U[S]+dt*(V-U[S])/tau
         Xnew = X[S]+dt*Unew
@@ -112,7 +113,7 @@ def update_positions_ftl_order_2(L, X, U, t, dt, tau, Phi, periodicity=True,
         # The last position in the array is the leader...
         Xnew = X+dt*U
         W = X[1:]-X[:-1]
-        Unew = sp.zeros(U.shape)
+        Unew = np.zeros(U.shape)
         Unew[:-1] = U[:-1] + dt*(Phi(W)-U[:-1])/tau
         Unew[-1] = V_leader(t)
     return Xnew, Unew
@@ -150,9 +151,9 @@ def plot_people(L, X, t, data, tgrid, periodicity=True, V_leader=None,
         size of the spheres used to represent the individuals
     """
     N = X.shape[0]
-    XY = sp.zeros((N,2))
+    XY = np.zeros((N,2))
     XY[:,0] = X
-    itmax = sp.where(tgrid<=t)[0].max()
+    itmax = np.where(tgrid<=t)[0].max()
 
     fig = plt.figure(ifig,figsize=(16,9))
     fig.clf()
@@ -168,8 +169,8 @@ def plot_people(L, X, t, data, tgrid, periodicity=True, V_leader=None,
     #ax1.axis('off')
     ax1.set_xlabel('x')
     offsets = list(zip(XY))
-    colors = sp.arange(N)/N
-    colors = sp.ones(N)#sp.arange(N)/N
+    colors = np.arange(N)/N
+    colors = np.ones(N)#np.arange(N)/N
     scale = 20
     sc = ax1.scatter(XY[:,0],XY[:,1], c=colors, s=spheresize, edgecolor='None',
         marker='.',cmap=plt.get_cmap('Greys'),norm=plt.Normalize(-0.2, 1))
@@ -185,16 +186,16 @@ def plot_people(L, X, t, data, tgrid, periodicity=True, V_leader=None,
         ax3.set_ylabel('Leader velocity')
         ax3.plot(t,V_leader(t),'ko')
 
-    wgrid = sp.linspace(0,L,500)
+    wgrid = np.linspace(0,L,500)
     if periodicity:
         ax2 = fig.add_subplot(222)
     else:
         ax2 = fig.add_subplot(232)
     ax2.plot(wgrid,speed_fct(wgrid))
-    S = sp.argsort(X)
+    S = np.argsort(X)
     W = X[S[1:]] - X[S[:-1]]
     if periodicity:
-        W = sp.append(W,(X[S[0]]+L) - X[S[-1]])
+        W = np.append(W,(X[S[0]]+L) - X[S[-1]])
     ax2.plot(W,speed_fct(W),'ko')
     ax2.set_xlabel('distance')
     ax2.set_ylabel('speed')
@@ -203,7 +204,7 @@ def plot_people(L, X, t, data, tgrid, periodicity=True, V_leader=None,
         ax4 = fig.add_subplot(223)
     else:
         ax4 = fig.add_subplot(234)
-    for ip in sp.arange(N):
+    for ip in np.arange(N):
         ax4.plot(tgrid[:itmax], data[ip,0,:itmax])
     ax4.set_ylim(0,max(L,data[:,0,:itmax].max()))
     ax4.set_xlim(tgrid.min(),tgrid.max())
@@ -214,8 +215,8 @@ def plot_people(L, X, t, data, tgrid, periodicity=True, V_leader=None,
         ax5 = fig.add_subplot(224)
     else:
         ax5 = fig.add_subplot(235)
-    Y = sp.linspace(0, 0.25*L*N, num=N)
-    for ip in sp.arange(N-1):
+    Y = np.linspace(0, 0.25*L*N, num=N)
+    for ip in np.arange(N-1):
         ax5.plot(tgrid[:itmax],Y[ip]+(data[ip+1,0,:itmax]-data[ip,0,:itmax]))
     if periodicity:
         d0 = data[0,0,:itmax]

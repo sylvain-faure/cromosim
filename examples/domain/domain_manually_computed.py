@@ -9,6 +9,7 @@
 
 from cromosim import *
 import scipy as sp
+import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse, Circle, Rectangle, Polygon, Arrow
@@ -51,9 +52,9 @@ mask = (dom.X<x0)+(dom.X>x3)+(dom.Y<y0)+(dom.Y>y1)
 ## Compute manually a desired velocity
 desired_velocity_X = xd - dom.X
 desired_velocity_Y = yd - dom.Y
-norm = sp.sqrt( desired_velocity_X**2+desired_velocity_Y**2 )
-desired_velocity_X = sp.ma.MaskedArray(desired_velocity_X/norm,mask=mask)
-desired_velocity_Y = sp.ma.MaskedArray(desired_velocity_Y/norm,mask=mask)
+norm = np.sqrt( desired_velocity_X**2+desired_velocity_Y**2 )
+desired_velocity_X = np.ma.MaskedArray(desired_velocity_X/norm,mask=mask)
+desired_velocity_Y = np.ma.MaskedArray(desired_velocity_Y/norm,mask=mask)
 dom.door_distance = norm
 dom.desired_velocity_X = desired_velocity_X
 dom.desired_velocity_Y = desired_velocity_Y
@@ -67,17 +68,19 @@ dist_wall1 = x3-dom.X
 dist_wall3 = dom.X-x0
 dist_wall0 = (dom.X<=x1)*(dom.Y-y0) + \
              (dom.X>=x2)*(dom.Y-y0) + \
-             (dom.X>x1)*(dom.X<x2)*sp.minimum( \
-                sp.sqrt((dom.X-x1)**2+(dom.Y-y0)**2), \
-                sp.sqrt((dom.X-x2)**2+(dom.Y-y0)**2)  \
+             (dom.X>x1)*(dom.X<x2)*np.minimum( \
+                np.sqrt((dom.X-x1)**2+(dom.Y-y0)**2), \
+                np.sqrt((dom.X-x2)**2+(dom.Y-y0)**2)  \
              )
-wall_distance = sp.ma.MaskedArray(sp.minimum(sp.minimum(sp.minimum( \
+wall_distance = np.ma.MaskedArray(np.minimum(np.minimum(np.minimum( \
                     dist_wall0,dist_wall1),dist_wall2),dist_wall3), mask=mask \
                 )
-grad = sp.gradient(wall_distance,edge_order=2)
+grad = np.gradient(wall_distance,edge_order=2)
 grad_X = grad[1]/pixel_size
 grad_Y = grad[0]/pixel_size
-norm = sp.sqrt(grad_X**2+grad_Y**2)
+print((grad_X**2).min(),(grad_Y**2).min())
+print((grad_X**2).min(),(grad_Y**2).min())
+norm = np.sqrt(grad_X**2+grad_Y**2)
 wall_grad_X = grad_X/norm
 wall_grad_Y = grad_Y/norm
 dom.wall_distance = wall_distance
