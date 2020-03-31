@@ -4,10 +4,7 @@
 # License: GPL
 
 import scipy as sp
-<<<<<<< HEAD
-=======
 import numpy as np
->>>>>>> 680862a0447594077e44b73b1b1f0908dfdc3a94
 try:
     from scipy.misc import imread
 except:

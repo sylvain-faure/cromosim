@@ -5,19 +5,11 @@
 
 import sys
 import scipy as sp
-<<<<<<< HEAD
-try:
-    from scipy.misc import imread
-except:
-    from imread import imread
-
-=======
 import numpy as np
 try:
     from scipy.misc import imread
 except:
     from imageio import imread
->>>>>>> 680862a0447594077e44b73b1b1f0908dfdc3a94
 #from scipy.spatial import KDTree
 from scipy.spatial import cKDTree
 from scipy.sparse import csr_matrix
