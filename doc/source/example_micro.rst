@@ -5,25 +5,15 @@ In the two following models, individuals are seen as spherical particles. They
 move at a desired velocity to reach a goal (typically a door). Doing nothing more
 would lead to many overlaps between individuals. Hence the two families of
 models below can prevent these overlaps through two different approaches. For
-the Social Force models, and, for some forces are added to act against overlaps, and for
-the Granular model the velocities are projected into a permissible velocity
+the `Social Force models`, and, for some forces are added to act against overlaps, and for
+the `Granular model` the velocities are projected into a permissible velocity
 space which ensures the absence of overlaps.
-
-The domain used for both models is obtained by using the following background
-image:
-
-.. raw:: html
-
-   <br>
-   <img src="_static/event.png" alt="Computational domain" style="margin:0px auto;display:block" width="50%" height="auto"/>
-   <br>
-
 
 
 Social force model
 -------------------
 
-The Social Force model has been introduced in the 90’s. Pedestrians are identified
+The `Social Force model` has been introduced in the 90’s. Pedestrians are identified
 with inertial particles submitted to a forcing term which implements the
 individual tendencies and extra forces which account for interactions with
 other pedestrians (typically the tendency to preserve a certain distance
@@ -31,55 +21,151 @@ with neighbors).
 
 Reference : [MF2018]_ Chapter 3.
 
-An example can be found in the directory
+Some examples can be found in the directory
 
-.. code-block:: python3
+.. code-block:: python
 
    cromosim/examples/micro/social
 
 and can be launched with
 
-.. code-block:: python3
+.. code-block:: python
 
-   python3 micro_social.py --json input.json
+   python micro_social.py --json input_room.json
+   python micro_social.py --json input_event.json
+   python micro_social.py --json input_stadium.json
+   python micro_social.py --json input_shibuya_crossing.json
+   python micro_social.py --json input_stairs.json
 
 .. raw:: html
 
+  <table style="width:100%">
+    <tr>
+      <th>
+        <center>
+          <em><small>Evacuation of a room, visualization of trajectories</small></em>
+        </center>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <center>
+          <video style="display:block; margin: 0 auto;" controls poster="_static/micro_social_room_paths.png" width="40%" height="auto">
+            <source src="_static/micro_social_room_paths.mp4" />
+            <source src="_static/micro_social_room_paths.webmhd.webm" />
+            <source src="_static/micro_social_room_paths.oggtheora.ogv" />
+          </video>
+        </center>
+      </td>
+    </tr>
+  </table>
   <br>
+  <table style="width:100%">
+    <tr>
+      <th>
+        <center>
+          <em><small>Circular track around a stadium</small></em>
+        </center>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <center>
+          <video style="display:block; margin: 0 auto;" controls poster="_static/micro_social_stadium.png" width="40%" height="auto">
+            <source src="_static/micro_social_stadium.mp4" />
+            <source src="_static/micro_social_stadium.webmhd.webm" />
+            <source src="_static/micro_social_stadium.oggtheora.ogv" />
+          </video>
+        </center>
+      </td>
+    </tr>
+  </table>
   <br>
-  <video style="display:block; margin: 0 auto;" controls poster="_static/micro_social.png" width="50%" height="auto">
-    <source src="_static/micro_social.mp4" />
-    <source src="_static/micro_social.webm" />
-    <source src="_static/micro_social.theora.ogv" />
-  </video>
+  <table style="width:100%">
+    <tr>
+      <th>
+        <center>
+          <em><small>Evacuation of an exhibition hall: two groups of people with the same destination</small></em>
+        </center>
+      </th>
+      <th>
+        <center>
+          <em><small>Evacuation of an exhibition hall: sensors (green lines) results</small></em>
+        </center>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <center>
+          <video style="display:block; margin: 0 auto;" controls poster="_static/micro_social_event.png" width="40%" height="auto">
+            <source src="_static/micro_social_event.mp4" />
+            <source src="_static/micro_social_event.webmhd.webm" />
+            <source src="_static/micro_social_event.oggtheora.ogv" />
+          </video>
+        </center>
+      </td>
+      <td>
+        <center>
+          <img src="_static/micro_social_event_sensor.png" alt="Evacuation of an exhibition hall : Sensors (green lines) results" style="margin:0px auto;display:block" width="100%" height="auto"/>
+        </center>
+      </td>
+    </tr>
+  </table>
   <br>
-  <div align=center>
-    <i>Social force model : an evacuation in complex geometry</i>
-  </div>
+  <table style="width:100%">
+    <tr>
+      <th>
+        <center>
+          <em><small>Shibuya crossing (Japan) : five groups of people and five different destinations</small></em>
+        </center>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <center>
+          <video style="display:block; margin: 0 auto;" controls poster="_static/micro_social_shibuya_crossing.png" width="40%" height="auto">
+            <source src="_static/micro_social_shibuya_crossing.mp4" />
+            <source src="_static/micro_social_shibuya_crossing.webmhd.webm" />
+            <source src="_static/micro_social_shibuya_crossing.oggtheora.ogv" />
+          </video>
+        </center>
+      </td>
+    </tr>
+  </table>
   <br>
-  <br>
-  <img src="_static/micro_social_sensor_0_5929.png" alt="Results of sensor 1" style="margin:0px auto;display:block" width="50%" height="auto"/>
-  <br>
-  <div align=center>
-    <i>Sensor 1</i>
-  </div>
-  <br>
-  <img src="_static/micro_social_sensor_1_5929.png" alt="Results of sensor 2" style="margin:0px auto;display:block" width="50%" height="auto"/>
-  <br>
-  <div align=center>
-    <i>Sensor 2</i>
-  </div>
-  <br>
-  <br>
+  <table style="width:100%">
+    <tr>
+      <th>
+        <center>
+          <em><small>Two floors of a building: a group of people goes up and another goes down
+          <br>Floor 1 on the left and 0 on the right</small></em>
+        </center>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <center>
+          <video style="display:block; margin: 0 auto;" controls poster="_static/micro_social_stairs_0_1.png" width="100%" height="auto">
+            <source src="_static/micro_social_stairs_0_1.mp4" />
+            <source src="_static/micro_social_stairs_0_1.webmhd.webm" />
+            <source src="_static/micro_social_stairs_0_1.oggtheora.ogv" />
+          </video>
+        </center>
+      </td>
+    </tr>
+  </table>
 
 ..  literalinclude:: ../../examples/micro/social/micro_social.py
-    :lines: 1-
+  :caption: micro_social.py
+  :linenos:
+  :language: python
+  :lines: 1-
 
 
 Granular model
 ---------------
 
-The Granular model comes from crowd motion models of the granular type : each
+The `Granular model` comes from crowd motion models of the granular type : each
 individual is identified to a hard disk of a prescribed size, subject to a
 non-overlapping constraint with their neighbors. The approach relies on a
 desired velocity for each individual (the velocity they would take if they were
@@ -91,46 +177,141 @@ Reference : [MF2018]_ Chapter 4.
 
 An example can be find in the directory
 
-.. code-block:: python3
+.. code-block:: python
 
    cromosim/examples/micro/granular
 
 and can be launched with
 
-.. code-block:: python3
 
-   python3 micro_granular.py --json input.json
+.. code-block:: python
 
+   python micro_granular.py --json input_room.json
+   python micro_granular.py --json input_event.json
+   python micro_granular.py --json input_stadium.json
+   python micro_granular.py --json input_shibuya_crossing.json
+   python micro_granular.py --json input_stairs.json
 
 .. raw:: html
 
-   <br>
-   <br>
-   <video style="display:block; margin: 0 auto;" controls poster="_static/micro_granular.png" width="50%" height="auto">
-     <source src="_static/micro_granular.mp4" />
-     <source src="_static/micro_granular.webm" />
-     <source src="_static/micro_granular.theora.ogv" />
-   </video>
-   <br>
-   <div align=center>
-     <i>Granular model : an evacuation in complex geometry</i>
-   </div>
-   <br>
-   <br>
-   <img src="_static/micro_granular_sensor_0_4097.png" alt="Results of sensor 1" style="margin:0px auto;display:block" width="50%" height="auto"/>
-   <br>
-   <div align=center>
-     <i>Sensor 1</i>
-   </div>
-   <br>
-   <img src="_static/micro_granular_sensor_1_4097.png" alt="Results of sensor 2" style="margin:0px auto;display:block" width="50%" height="auto"/>
-   <br>
-   <div align=center>
-     <i>Sensor 2</i>
-   </div>
-   <br>
-   <br>
-
+  <table style="width:100%">
+    <tr>
+      <th>
+        <center>
+          <em><small>Evacuation of a room, visualization of trajectories</small></em>
+        </center>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <center>
+          <video style="display:block; margin: 0 auto;" controls poster="_static/micro_granular_room_paths.png" width="40%" height="auto">
+            <source src="_static/micro_granular_room_paths.mp4" />
+            <source src="_static/micro_granular_room_paths.webmhd.webm" />
+            <source src="_static/micro_granular_room_paths.oggtheora.ogv" />
+          </video>
+        </center>
+      </td>
+    </tr>
+  </table>
+  <br>
+  <table style="width:100%">
+    <tr>
+      <th>
+        <center>
+          <em><small>Circular track around a stadium</small></em>
+        </center>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <center>
+          <video style="display:block; margin: 0 auto;" controls poster="_static/micro_granular_stadium.png" width="40%" height="auto">
+            <source src="_static/micro_granular_stadium.mp4" />
+            <source src="_static/micro_granular_stadium.webmhd.webm" />
+            <source src="_static/micro_granular_stadium.oggtheora.ogv" />
+          </video>
+        </center>
+      </td>
+    </tr>
+  </table>
+  <br>
+  <table style="width:100%">
+    <tr>
+      <th>
+        <center>
+          <em><small>Evacuation of an exhibition hall: two groups of people with the same destination</small></em>
+        </center>
+      </th>
+      <th>
+        <center>
+          <em><small>Evacuation of an exhibition hall: sensors (green lines) results</small></em>
+        </center>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <center>
+          <video style="display:block; margin: 0 auto;" controls poster="_static/micro_granular_event.png" width="40%" height="auto">
+            <source src="_static/micro_granular_event.mp4" />
+            <source src="_static/micro_granular_event.webmhd.webm" />
+            <source src="_static/micro_granular_event.oggtheora.ogv" />
+          </video>
+        </center>
+      </td>
+      <td>
+        <center>
+          <img src="_static/micro_granular_event_sensor.png" alt="Evacuation of an exhibition hall : Sensors (green lines) results" style="margin:0px auto;display:block" width="100%" height="auto"/>
+        </center>
+      </td>
+    </tr>
+  </table>
+  <br>
+  <table style="width:100%">
+    <tr>
+      <th>
+        <center>
+          <em><small>Shibuya crossing (Japan) : five groups of people and five different destinations</small></em>
+        </center>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <center>
+          <video style="display:block; margin: 0 auto;" controls poster="_static/micro_granular_shibuya_crossing.png" width="40%" height="auto">
+            <source src="_static/micro_granular_shibuya_crossing.mp4" />
+            <source src="_static/micro_granular_shibuya_crossing.webmhd.webm" />
+            <source src="_static/micro_granular_shibuya_crossing.oggtheora.ogv" />
+          </video>
+        </center>
+      </td>
+    </tr>
+  </table>
+  <br>
+  <table style="width:100%">
+    <tr>
+      <th>
+        <center>
+          <em><small>Two floors of a building: a group of people goes up and another goes down
+          <br>Floor 1 on the left and 0 on the right</small></em>
+        </center>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <center>
+          <video style="display:block; margin: 0 auto;" controls poster="_static/micro_granular_stairs_0_1.png" width="100%" height="auto">
+            <source src="_static/micro_granular_stairs_0_1.mp4" />
+            <source src="_static/micro_granular_stairs_0_1.webmhd.webm" />
+            <source src="_static/micro_granular_stairs_0_1.oggtheora.ogv" />
+          </video>
+        </center>
+      </td>
+    </tr>
+  </table>
 
 ..  literalinclude:: ../../examples/micro/granular/micro_granular.py
-    :lines: 1-
+  :caption: micro_granular.py
+  :linenos:
+  :language: python
+  :lines: 1-

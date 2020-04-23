@@ -1,13 +1,14 @@
 # Authors:
-#     Sylvain Faure <sylvain.faure@math.u-psud.fr>
-#     Bertrand Maury <bertrand.maury@math.u-psud.fr>
+#     Sylvain Faure <sylvain.faure@universite-paris-saclay.fr>
+#     Bertrand Maury <bertrand.maury@universite-paris-saclay.fr>
 # License: GPL
-
-import sys
-import scipy as sp
 import numpy as np
+import scipy as sp
+import sys
+import random
 import matplotlib
 import matplotlib.pyplot as plt
+
 from matplotlib.lines import Line2D
 from matplotlib.collections import LineCollection
 

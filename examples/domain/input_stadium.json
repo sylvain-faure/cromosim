@@ -1,0 +1,42 @@
+{
+  "domain":
+  {
+    "name":"stadium",
+    "background":"stadium.png",
+    "px":0.1,
+    "width":null,
+    "height":null,
+    "wall_colors":[ [0,0,0] ],
+    "shape_lines":[
+    ],
+    "shape_circles":[
+    ],
+    "shape_ellipses":[
+    ],
+    "shape_rectangles":[
+    ],
+    "shape_polygons":[
+    ],
+    "destinations":[
+      {
+        "name": "running_track",
+        "colors": [ [255,0,0] ],
+        "excluded_colors":[ [0,0,0],[0,255,0] ],
+        "desired_velocity_from_color":[
+          {
+            "color": [255,0,0],
+            "desired_velocity": [-1,0]
+          },
+          {
+            "color": [0,255,0],
+            "desired_velocity": [-1,0]
+          }
+        ],
+        "velocity_scale": 1,
+        "next_destination": null,
+        "next_domain": null,
+        "next_transit_box":null
+      }
+    ]
+  }
+}

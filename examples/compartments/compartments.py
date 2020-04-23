@@ -1,6 +1,6 @@
 # Authors:
-#     Sylvain Faure <sylvain.faure@math.u-psud.fr>
-#     Bertrand Maury <bertrand.maury@math.u-psud.fr>
+#     Sylvain Faure <sylvain.faure@universite-paris-saclay.fr>
+#     Bertrand Maury <bertrand.maury@universite-paris-saclay.fr>
 #
 #      cromosim/examples/compartments/compartments.py
 #      python compartments.py --json input.json
@@ -14,41 +14,119 @@ from optparse import OptionParser
 import json
 
 """
-    python3 compartments.py --json input.json
+    python compartments.py --json input.json
 """
+
 parser = OptionParser(usage="usage: %prog [options] filename",version="%prog 1.0")
 parser.add_option('--json',dest="jsonfilename",default="input.json",type="string",
                   action="store",help="Input json filename")
 opt, remainder = parser.parse_args()
 print("===> JSON filename = ",opt.jsonfilename)
 with open(opt.jsonfilename) as json_file:
-    input = json.load(json_file)
-
+    try:
+        input = json.load(json_file)
+    except json.JSONDecodeError as msg:
+        print(msg)
+        print("Failed to load json file ",opt.jsonfilename)
+        print("Check its content (https://fr.wikipedia.org/wiki/JavaScript_Object_Notation)")
+        sys.exit()
 
 """
     Get parameters from json file :
-
-    name: string
-        Domain name
+    For the domain :
+    |    name: string
+    |        Domain name
+    |    background: string
+    |        Image file used as background
+    |    px: float
+    |        Pixel size in meters (also called space step)
+    |    width: integer
+    |        Domain width (equal to the width of the background image)
+    |    height: integer
+    |        Domain height (equal to the height of the background image)
+    |    wall_colors: list
+    |        rgb colors for walls
+    |        [ [r,g,b],[r,g,b],... ]
+    |    shape_lines: list
+    |        Used to define the Matplotlib Polyline shapes,
+    |        [
+    |          {
+    |             "xx": [x0,x1,x2,...],
+    |             "yy": [y0,y1,y2,...],
+    |             "linewidth": float,
+    |             "outline_color": [r,g,b],
+    |             "fill_color": [r,g,b]
+    |          },...
+    |        ]
+    |    shape_circles: list
+    |        Used to define the Matplotlib Circle shapes,
+    |        [
+    |           {
+    |             "center_x": float,
+    |             "center_y": float,
+    |             "radius": float,
+    |             "outline_color": [r,g,b],
+    |             "fill_color": [r,g,b]
+    |            },...
+    |        ]
+    |    shape_ellipses: list
+    |        Used to define the Matplotlib Ellipse shapes,
+    |        [
+    |           {
+    |             "center_x": float,
+    |             "center_y": float,
+    |             "width": float,
+    |             "height": float,
+    |             "angle_in_degrees_anti-clockwise": float (degre),
+    |             "outline_color": [r,g,b],
+    |             "fill_color": [r,g,b]
+    |            },...
+    |        ]
+    |    shape_rectangles: list
+    |        Used to define the Matplotlib Rectangle shapes,
+    |        [
+    |           {
+    |             "bottom_left_x": float,
+    |             "bottom_left_y": float,
+    |             "width": float,
+    |             "height": float,
+    |             "angle_in_degrees_anti-clockwise": float (degre),
+    |             "outline_color": [r,g,b],
+    |             "fill_color": [r,g,b]
+    |            },...
+    |        ]
+    |    shape_polygons: list
+    |        Used to define the Matplotlib Polygon shapes,
+    |        [
+    |           {
+    |             "xy": float,
+    |             "outline_color": [r,g,b],
+    |             "fill_color": [r,g,b]
+    |            },...
+    |        ]
+    |    destinations: list
+    |        Used to define the Destination objects,
+    |        [
+    |           {
+    |             "name": string,
+    |             "colors": [[r,g,b],...],
+    |             "excluded_colors": [[r,g,b],...],
+    |             "desired_velocity_from_color": [] or
+    |             [
+    |                {
+    |                   "color": [r,g,b],
+    |                   "desired_velocity": [ex,ey]
+    |                },...
+    |             ],
+    |             "velocity_scale": float,
+    |             "next_destination": null or string,
+    |             "next_domain": null or string,
+    |             "next_transit_box": null or [[x0,y0],...,[x3,y3]]
+    |            },...
+    |        ]
+    |--------------------
     prefix: string
         Folder name to store the results
-    background: string
-        Image file used as background
-    px: float
-        Pixel size in meters (also called space step)
-    width: integer
-        Domain width (equal to the width of the background image)
-    height: integer
-        Domain height (equal to the height of the background image)
-    wall_lines : list of numpy arrays
-        Polylines used to build walls, [ [[x0,x1,x2,...],[y0,y1,y2,...]],... ]
-    wall_ellipses : list of numpy arrays
-        Ellipses used to build walls, [ [x_center,y_center, width, height, \
-        angle_in_degrees_anti-clockwise],... ]
-    wall_polygons : list of numpy arrays
-        Polygons used to build walls, [ [[x0,x1,x2,...],[y0,y1,y2,...]],... ]
-    door_lines: list of numpy arrays
-        Polylines used to build doors, [ [[x0,x1,x2,...],[y0,y1,y2,...]],... ]
     seed: integer
         Random seed which can be used to reproduce a random selection if >0
     Np_rooms: integer
@@ -62,18 +140,12 @@ with open(opt.jsonfilename) as json_file:
     DoorRoomCapacity
     Nsecondes
 """
-name = input["name"]
+
+jdom = input["domain"]
+print("===> JSON data used to build the domain : ",jdom)
 prefix = input["prefix"]
 if not os.path.exists(prefix):
     os.makedirs(prefix)
-background = input["background"]
-px = input["px"]
-width = input["width"]
-height = input["height"]
-wall_lines = input["wall_lines"]
-wall_ellipses = input["wall_ellipses"]
-wall_polygons = input["wall_polygons"]
-door_lines = input["door_lines"]
 seed = input["seed"]
 Np_rooms = input["Np_rooms"]
 area = input["area"]
@@ -95,43 +167,77 @@ Nrooms = len(RoomNames)
 print("===> Number of rooms : ",Nrooms)
 print("===> Capacity of each exit door : ",DoorRoomCapacity)
 
-
 """
-    Build the Domain
+    Build the Domain objects
 """
-
-## To create an Domain object
-if (background==""):
-    dom = Domain(name=name, pixel_size=px, width=width, height=height)
+jname = jdom["name"]
+print("===> Build domain ",jname)
+jbg = jdom["background"]
+jpx = jdom["px"]
+jwidth = jdom["width"]
+jheight = jdom["height"]
+jwall_colors = jdom["wall_colors"]
+if (jbg==""):
+    dom = Domain(name=jname, pixel_size=jpx, width=jwidth, height=jheight,
+                 wall_colors=jwall_colors)
 else:
-    dom = Domain(name=name, background=background, pixel_size=px)
+    dom = Domain(name=jname, background=jbg, pixel_size=jpx,
+                 wall_colors=jwall_colors)
 ## To add lines : Line2D(xdata, ydata, linewidth)
-for xy in wall_lines:
-    line = Line2D( xy[0],xy[1], linewidth=1)
-    dom.add_wall(line)
-## To add ellipses : Ellipse( (x_center,y_center), width, height,
-##                             angle_in_degrees_anti-clockwise )
-for e in wall_ellipses:
-    ellipse = Ellipse( (e[0], e[1]), e[2], e[3], e[4])
-    dom.add_wall(ellipse)
-## To add polygons : Polygon( xy )
-for p in wall_polygons:
-    polygon = Polygon(p)
-    dom.add_wall(polygon)
-## To add doors :
-for xy in door_lines:
-    line = Line2D( xy[0],xy[1], linewidth=1)
-    dom.add_door(line)
+for sl in jdom["shape_lines"]:
+    line = Line2D(sl["xx"],sl["yy"],linewidth=sl["linewidth"])
+    dom.add_shape(line,outline_color=sl["outline_color"],
+                  fill_color=sl["fill_color"])
+## To add circles : Circle( (center_x,center_y), radius )
+for sc in jdom["shape_circles"]:
+    circle = Circle( (sc["center_x"], sc["center_y"]), sc["radius"] )
+    dom.add_shape(circle,outline_color=sc["outline_color"],
+                  fill_color=sc["fill_color"])
+## To add ellipses : Ellipse( (center_x,center_y), width, height,
+##                            angle_in_degrees_anti-clockwise )
+for se in jdom["shape_ellipses"]:
+    ellipse = Ellipse( (se["center_x"], se["center_y"]),
+                        se["width"], se["height"],
+                        se["angle_in_degrees_anti-clockwise"])
+    dom.add_shape(ellipse,outline_color=se["outline_color"],
+                  fill_color=se["fill_color"])
+## To add rectangles : Rectangle( (bottom_left_x,bottom_left_y), width, height,
+##                                 angle_in_degrees_anti-clockwise )
+for sr in jdom["shape_rectangles"]:
+    rectangle = Rectangle( (sr["bottom_left_x"],sr["bottom_left_y"]),
+                           sr["width"], sr["height"],
+                           sr["angle_in_degrees_anti-clockwise"])
+    dom.add_shape(rectangle,outline_color=sr["outline_color"],
+                  fill_color=sr["fill_color"])
+## To add polygons : Polygon( [[x0,y0],[x1,y1],...] )
+for spo in jdom["shape_polygons"]:
+    polygon = Polygon(spo["xy"])
+    dom.add_shape(polygon,outline_color=spo["outline_color"],
+                  fill_color=spo["fill_color"])
 ## To build the domain : background + shapes
 dom.build_domain()
-## To compute the distance to the walls
-dom.compute_wall_distance()
-## To compute the desired velocity
-dom.compute_desired_velocity()
-## To show the domain dimensions
+## To add all the available destinations
+for j,dd in enumerate(jdom["destinations"]):
+    desired_velocity_from_color=[]
+    for gg in dd["desired_velocity_from_color"]:
+        desired_velocity_from_color.append(
+            np.concatenate((gg["color"],gg["desired_velocity"])))
+    dest = Destination(name=dd["name"],colors=dd["colors"],
+    excluded_colors=dd["excluded_colors"],
+    desired_velocity_from_color=desired_velocity_from_color,
+    velocity_scale=dd["velocity_scale"],
+    next_destination=dd["next_destination"],
+    next_domain=dd["next_domain"],
+    next_transit_box=dd["next_transit_box"])
+    print("===> Destination : ",dest)
+    dom.add_destination(dest)
+
+    dom.plot_desired_velocity(dd["name"],id=10+j,step=20)
+
 print("===> Domain : ",dom)
-print("===> Wall lines : ",wall_lines)
-print("===> Door lines : ",door_lines)
+
+dom.plot(id=0)
+dom.plot_wall_dist(id=1,step=20)
 
 
 ## Maximal number of inlets for a room
@@ -155,11 +261,11 @@ T_iOr = np.zeros([Nrooms,NiorMax],dtype=int)
 for ir in np.arange(Nrooms):
     for i in np.arange(Nior[ir]):
         jr = List_iOr[ir,i]
-        ij_exit = np.rint(DoorCenters[ir,:2]/px).astype(int)
-        ij_entrance = np.rint(DoorCenters[jr,:2]/px).astype(int)
+        ij_exit = np.rint(DoorCenters[ir,:2]/dom.pixel_size).astype(int)
+        ij_entrance = np.rint(DoorCenters[jr,:2]/dom.pixel_size).astype(int)
         T_iOr[ir,i] = np.ceil( \
-                      dom.door_distance.data[ij_entrance[1],ij_entrance[0]] - \
-                      dom.door_distance.data[ij_exit[1],ij_exit[0]] )
+                      dom.destinations["door"].distance.data[ij_entrance[1],ij_entrance[0]] - \
+                      dom.destinations["door"].distance.data[ij_exit[1],ij_exit[0]] )
         T_iOr[ir,i] = TravelTimeWeights[ir][i]*T_iOr[ir,i]
 print("Travel times : ",T_iOr)
 

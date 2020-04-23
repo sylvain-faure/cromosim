@@ -1,6 +1,6 @@
 # Authors:
-#     Sylvain Faure <sylvain.faure@math.u-psud.fr>
-#     Bertrand Maury <bertrand.maury@math.u-psud.fr>
+#     Sylvain Faure <sylvain.faure@universite-paris-saclay.fr>
+#     Bertrand Maury <bertrand.maury@universite-paris-saclay.fr>
 #
 #     cromosim/examples/follow_the_leader/follow_the_leader.py
 #     python follow_the_leader.py --json input_ftl_order1.json

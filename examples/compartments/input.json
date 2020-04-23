@@ -1,14 +1,36 @@
 {
-  "name":"rooms_600x600",
+  "domain":
+  {
+    "name":"rooms",
+    "background":"rooms.png",
+    "px":0.025,
+    "width":null,
+    "height":null,
+    "wall_colors":[ [0,0,0] ],
+    "shape_lines":[
+    ],
+    "shape_circles":[
+    ],
+    "shape_ellipses":[
+    ],
+    "shape_rectangles":[
+    ],
+    "shape_polygons":[
+    ],
+    "destinations":[
+      {
+        "name": "door",
+        "colors": [ [255,0,0] ],
+        "excluded_colors":[ [0,0,0] ],
+        "desired_velocity_from_color":[],
+        "velocity_scale": 1,
+        "next_destination": null,
+        "next_domain": null,
+        "next_transit_box":null
+      }
+    ]
+  },
   "prefix":"results/",
-  "background":"rooms.png",
-  "width":600,
-  "height":600,
-  "px":0.025,
-  "wall_lines":[ ],
-  "wall_ellipses":[ ],
-  "wall_polygons":[ ],
-  "door_lines":[ ],
   "seed":20,
   "area":0.12,
   "RoomNames":["r0","r1","r2","r3","r4","r5"],

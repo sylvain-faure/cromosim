@@ -17,15 +17,9 @@ CLASSIFIERS = [
     "Topic :: Scientific/Engineering :: Mathematics",
     "Topic :: Software Development :: Libraries :: Python Modules"]
 
-<<<<<<< HEAD
 MAJOR = "2"
 MINOR = "0"
 PATCH = "0"
-=======
-MAJOR = "1"
-MINOR = "1"
-PATCH = "1"
->>>>>>> 680862a0447594077e44b73b1b1f0908dfdc3a94
 VERSION = "{0}.{1}.{2}".format(MAJOR, MINOR, PATCH)
 
 def write_version_py(filename='cromosim/version.py'):
@@ -55,17 +49,6 @@ setup(
     packages       = ["cromosim"],
     include_package_data=True,
     install_requires=[
-<<<<<<< HEAD
-                      'numpy>=1.11.0',
-                      'scipy>=0.19.1',
-                      'Pillow>=1.1.7',
-                      'matplotlib>=2.1.1',
-                      'numpydoc>=0.7.0',
-                      'sphinx>=1.6.3',
-                      'scikit-fmm>=0.0.9',
-                      'cvxopt>=1.2.3',
-                      'imread>=0.7.1'
-=======
                       'numpy>=1.18.0',
                       'scipy>=1.4.0',
                       'Pillow>=6.0.0',
@@ -75,6 +58,5 @@ setup(
                       'scikit-fmm>=2019.1.30',
                       'cvxopt>=1.2.0',
                       'imageio>=2.8.0'
->>>>>>> 680862a0447594077e44b73b1b1f0908dfdc3a94
                       ],
 )

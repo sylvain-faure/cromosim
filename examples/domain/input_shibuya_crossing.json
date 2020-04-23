@@ -1,0 +1,78 @@
+{
+  "domain":
+  {
+    "name":"shibuya_crossing",
+    "background":"shibuya_crossing.png",
+    "px":0.033,
+    "width":null,
+    "height":null,
+    "wall_colors":[ [0,0,0],[148,33,146] ],
+    "shape_lines":[
+    ],
+    "shape_circles":[
+    ],
+    "shape_ellipses":[
+    ],
+    "shape_rectangles":[
+    ],
+    "shape_polygons":[
+    ],
+    "destinations":[
+      {
+        "name": "blue",
+        "colors": [ [4,51,255] ],
+        "excluded_colors":[ [0,0,0],[148,33,146] ],
+        "desired_velocity_from_color":[
+        ],
+        "velocity_scale": 1,
+        "next_destination": null,
+        "next_domain": null,
+        "next_transit_box":null
+      },
+      {
+        "name": "brown",
+        "colors": [ [170,121,66] ],
+        "excluded_colors":[ [0,0,0],[148,33,146] ],
+        "desired_velocity_from_color":[
+        ],
+        "velocity_scale": 1,
+        "next_destination": null,
+        "next_domain": null,
+        "next_transit_box":null
+      },
+      {
+        "name": "cyan",
+        "colors": [ [0,253,255] ],
+        "excluded_colors":[ [0,0,0],[148,33,146] ],
+        "desired_velocity_from_color":[
+        ],
+        "velocity_scale": 1,
+        "next_destination": null,
+        "next_domain": null,
+        "next_transit_box":null
+      },
+      {
+        "name": "green",
+        "colors": [ [0,249,0] ],
+        "excluded_colors":[ [0,0,0],[148,33,146] ],
+        "desired_velocity_from_color":[
+        ],
+        "velocity_scale": 1,
+        "next_destination": null,
+        "next_domain": null,
+        "next_transit_box":null
+      },
+      {
+        "name": "pink",
+        "colors": [ [255,64,255] ],
+        "excluded_colors":[ [0,0,0],[148,33,146] ],
+        "desired_velocity_from_color":[
+        ],
+        "velocity_scale": 1,
+        "next_destination": null,
+        "next_domain": null,
+        "next_transit_box":null
+      }
+    ]
+  }
+}

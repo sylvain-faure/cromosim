@@ -1,6 +1,6 @@
 # Authors:
-#     Sylvain Faure <sylvain.faure@math.u-psud.fr>
-#     Bertrand Maury <bertrand.maury@math.u-psud.fr>
+#     Sylvain Faure <sylvain.faure@universite-paris-saclay.fr>
+#     Bertrand Maury <bertrand.maury@universite-paris-saclay.fr>
 #
 #      cromosim/examples/cellular_automata/cellular_automata.py
 #      python cellular_automata.py --json input.json
@@ -8,52 +8,127 @@
 # License: GPL
 
 import sys, os
-import numpy as np
 from cromosim import *
 from cromosim.ca import *
 from optparse import OptionParser
+from matplotlib.lines import Line2D
 import json
 
 """
-    python3 cellular_automata.py --json input.json
+    python cellular_automata.py --json input.json
 """
+
 parser = OptionParser(usage="usage: %prog [options] filename",version="%prog 1.0")
 parser.add_option('--json',dest="jsonfilename",default="input.json",type="string",
                   action="store",help="Input json filename")
 opt, remainder = parser.parse_args()
 print("===> JSON filename = ",opt.jsonfilename)
 with open(opt.jsonfilename) as json_file:
-    input = json.load(json_file)
-
+    try:
+        input = json.load(json_file)
+    except json.JSONDecodeError as msg:
+        print(msg)
+        print("Failed to load json file ",opt.jsonfilename)
+        print("Check its content : ")
+        print("(https://fr.wikipedia.org/wiki/JavaScript_Object_Notation)")
+        sys.exit()
 
 """
     Get parameters from json file :
-
-    name: string
-        Domain name
+    For the domain :
+    |    name: string
+    |        Domain name
+    |    background: string
+    |        Image file used as background
+    |    px: float
+    |        Pixel size in meters (also called space step)
+    |    width: integer
+    |        Domain width (equal to the width of the background image)
+    |    height: integer
+    |        Domain height (equal to the height of the background image)
+    |    wall_colors: list
+    |        rgb colors for walls
+    |        [ [r,g,b],[r,g,b],... ]
+    |    shape_lines: list
+    |        Used to define the Matplotlib Polyline shapes,
+    |        [
+    |          {
+    |             "xx": [x0,x1,x2,...],
+    |             "yy": [y0,y1,y2,...],
+    |             "linewidth": float,
+    |             "outline_color": [r,g,b],
+    |             "fill_color": [r,g,b]
+    |          },...
+    |        ]
+    |    shape_circles: list
+    |        Used to define the Matplotlib Circle shapes,
+    |        [
+    |           {
+    |             "center_x": float,
+    |             "center_y": float,
+    |             "radius": float,
+    |             "outline_color": [r,g,b],
+    |             "fill_color": [r,g,b]
+    |            },...
+    |        ]
+    |    shape_ellipses: list
+    |        Used to define the Matplotlib Ellipse shapes,
+    |        [
+    |           {
+    |             "center_x": float,
+    |             "center_y": float,
+    |             "width": float,
+    |             "height": float,
+    |             "angle_in_degrees_anti-clockwise": float (degre),
+    |             "outline_color": [r,g,b],
+    |             "fill_color": [r,g,b]
+    |            },...
+    |        ]
+    |    shape_rectangles: list
+    |        Used to define the Matplotlib Rectangle shapes,
+    |        [
+    |           {
+    |             "bottom_left_x": float,
+    |             "bottom_left_y": float,
+    |             "width": float,
+    |             "height": float,
+    |             "angle_in_degrees_anti-clockwise": float (degre),
+    |             "outline_color": [r,g,b],
+    |             "fill_color": [r,g,b]
+    |            },...
+    |        ]
+    |    shape_polygons: list
+    |        Used to define the Matplotlib Polygon shapes,
+    |        [
+    |           {
+    |             "xy": float,
+    |             "outline_color": [r,g,b],
+    |             "fill_color": [r,g,b]
+    |            },...
+    |        ]
+    |    destinations: list
+    |        Used to define the Destination objects,
+    |        [
+    |           {
+    |             "name": string,
+    |             "colors": [[r,g,b],...],
+    |             "excluded_colors": [[r,g,b],...],
+    |             "desired_velocity_from_color": [] or
+    |             [
+    |                {
+    |                   "color": [r,g,b],
+    |                   "gradient": [ex,ey]
+    |                },...
+    |             ],
+    |             "velocity_scale": float,
+    |             "next_destination": null or string,
+    |             "next_domain": null or string,
+    |             "next_transit_box": null or [[x0,y0],...,[x3,y3]]
+    |            },...
+    |        ]
+    |--------------------
     prefix: string
         Folder name to store the results
-    background: string
-        Image file used as background
-    px: float
-        Pixel size in meters (also called space step)
-    width: integer
-        Domain width (equal to the width of the background image)
-    height: integer
-        Domain height (equal to the height of the background image)
-    wall_lines : list of numpy arrays
-        Polylines used to build walls, [ [[x0,x1,x2,...],[y0,y1,y2,...]],... ]
-    wall_ellipses : list of numpy arrays
-        Ellipses used to build walls, [ [x_center,y_center, width, height, \
-        angle_in_degrees_anti-clockwise],... ]
-    wall_polygons : list of numpy arrays
-        Polygons used to build walls, [ [[x0,x1,x2,...],[y0,y1,y2,...]],... ]
-    wall_lines : list of numpy arrays
-        Polylines used to build walls, [ [[x0,x1,x2,...],[y0,y1,y2,...]],... ]
-    door_lines: list of numpy arrays
-        Polylines used to build doors, [ [[x0,x1,x2,...],[y0,y1,y2,...]],... ]
-    update_strategy: string
-            Rules used to move the individuals : 'sequential' or 'parallel'
     seed: integer
         Random seed which can be used to reproduce a random selection if >0
     Np: integer
@@ -68,18 +143,11 @@ with open(opt.jsonfilename) as json_file:
         The results will be displayed every "drawper" iterations
 """
 
-name = input["name"]
+jdom = input["domain"]
+print("===> JSON data used to build the domain : ",jdom)
 prefix = input["prefix"]
 if not os.path.exists(prefix):
     os.makedirs(prefix)
-background = input["background"]
-px = input["px"]
-width = input["width"]
-height = input["height"]
-wall_lines = input["wall_lines"]
-wall_ellipses = input["wall_ellipses"]
-wall_polygons = input["wall_polygons"]
-door_lines = input["door_lines"]
 seed = input["seed"]
 Np = input["Np"]
 update_strategy = input["update_strategy"]
@@ -93,41 +161,83 @@ print("===> Time step, dt = ",dt)
 print("===> To draw the results each drawper iterations, drawper = ",drawper)
 
 """
-    Build the Domain
+    Build the Domain objects
 """
-
-## To create an Domain object
-if (background==""):
-    dom = Domain(name=name, pixel_size=px, width=width, height=height)
+jname = jdom["name"]
+print("===> Build domain ",jname)
+jbg = jdom["background"]
+jpx = jdom["px"]
+jwidth = jdom["width"]
+jheight = jdom["height"]
+jwall_colors = jdom["wall_colors"]
+if (jbg==""):
+    dom = Domain(name=jname, pixel_size=jpx, width=jwidth, height=jheight,
+                 wall_colors=jwall_colors)
 else:
-    dom = Domain(name=name, background=background, pixel_size=px)
+    dom = Domain(name=jname, background=jbg, pixel_size=jpx,
+                 wall_colors=jwall_colors)
 ## To add lines : Line2D(xdata, ydata, linewidth)
-for xy in wall_lines:
-    line = Line2D( xy[0],xy[1], linewidth=1)
-    dom.add_wall(line)
-## To add ellipses : Ellipse( (x_center,y_center), width, height,
-##                             angle_in_degrees_anti-clockwise )
-for e in wall_ellipses:
-    ellipse = Ellipse( (e[0], e[1]), e[2], e[3], e[4])
-    dom.add_wall(ellipse)
-## To add polygons : Polygon( xy )
-for p in wall_polygons:
-    polygon = Polygon(p)
-    dom.add_wall(polygon)
-## To add doors :
-for xy in door_lines:
-    line = Line2D( xy[0],xy[1], linewidth=1)
-    dom.add_door(line)
+for sl in jdom["shape_lines"]:
+    line = Line2D(sl["xx"],sl["yy"],linewidth=sl["linewidth"])
+    dom.add_shape(line,outline_color=sl["outline_color"],
+                  fill_color=sl["fill_color"])
+## To add circles : Circle( (center_x,center_y), radius )
+for sc in jdom["shape_circles"]:
+    circle = Circle( (sc["center_x"], sc["center_y"]), sc["radius"] )
+    dom.add_shape(circle,outline_color=sc["outline_color"],
+                  fill_color=sc["fill_color"])
+## To add ellipses : Ellipse( (center_x,center_y), width, height,
+##                            angle_in_degrees_anti-clockwise )
+for se in jdom["shape_ellipses"]:
+    ellipse = Ellipse( (se["center_x"], se["center_y"]),
+                        se["width"], se["height"],
+                        se["angle_in_degrees_anti-clockwise"])
+    dom.add_shape(ellipse,outline_color=se["outline_color"],
+                  fill_color=se["fill_color"])
+## To add rectangles : Rectangle( (bottom_left_x,bottom_left_y), width, height,
+##                                 angle_in_degrees_anti-clockwise )
+for sr in jdom["shape_rectangles"]:
+    rectangle = Rectangle( (sr["bottom_left_x"],sr["bottom_left_y"]),
+                           sr["width"], sr["height"],
+                           sr["angle_in_degrees_anti-clockwise"])
+    dom.add_shape(rectangle,outline_color=sr["outline_color"],
+                  fill_color=sr["fill_color"])
+## To add polygons : Polygon( [[x0,y0],[x1,y1],...] )
+for spo in jdom["shape_polygons"]:
+    polygon = Polygon(spo["xy"])
+    dom.add_shape(polygon,outline_color=spo["outline_color"],
+                  fill_color=spo["fill_color"])
 ## To build the domain : background + shapes
 dom.build_domain()
-## To compute the distance to the walls
-dom.compute_wall_distance()
-## To compute the desired velocity
-dom.compute_desired_velocity()
-## To show the domain dimensions
+## To add all the available destinations
+for j,dd in enumerate(jdom["destinations"]):
+    if (j>0) or (dd["name"] != "door"):
+        print("===> EXIT : For the moment the cellular automata implemented does")
+        print("     not make it possible to direct individuals to several")
+        print("     destinations, nor to use several Domain object. The json")
+        print("     file must therefore only contain one domain and one destination")
+        print("     necessarily called \"door\".")
+        sys.exit()
+    desired_velocity_from_color=[]
+    for gg in dd["desired_velocity_from_color"]:
+        desired_velocity_from_color.append(
+            np.concatenate((gg["color"],gg["gradient"])))
+    dest = Destination(name=dd["name"],colors=dd["colors"],
+    excluded_colors=dd["excluded_colors"],
+    desired_velocity_from_color=desired_velocity_from_color,
+    velocity_scale=dd["velocity_scale"],
+    next_destination=dd["next_destination"],
+    next_domain=dd["next_domain"],
+    next_transit_box=dd["next_transit_box"])
+    print("===> Destination : ",dest)
+    dom.add_destination(dest)
+
+    dom.plot_desired_velocity(dd["name"],id=10+j,step=20)
+
 print("===> Domain : ",dom)
-print("===> Wall lines : ",wall_lines)
-print("===> Door lines : ",door_lines)
+
+dom.plot(id=0)
+dom.plot_wall_dist(id=1,step=20)
 
 
 """
@@ -137,10 +247,11 @@ print("===> Door lines : ",door_lines)
 ## Current time
 t = 0
 
-people = np.ma.MaskedArray(np.zeros((height,width),dtype=int), mask=dom.mask)
+people = np.ma.MaskedArray(np.zeros((dom.height,dom.width),dtype=int),
+                           mask=dom.wall_mask)
 
 ## Number of cells
-Nc = height*width - dom.mask_id[0].shape[0]
+Nc = dom.height*dom.width - dom.wall_id[0].shape[0]
 print("===> Number of cells = ",Nc)
 
 ## People initialisation taking to account masked positions
@@ -150,14 +261,14 @@ if (seed>0):
 print("===> seed  = ",rng.get_state()[1][0])
 
 s = 0
-if (Nc<height*width):
-    imin = dom.mask_id[0].min()+1
-    imax = dom.mask_id[0].max()-1
-    jmin = dom.mask_id[1].min()+1
-    jmax = dom.mask_id[1].max()-1
+if (Nc<dom.height*dom.width):
+    imin = dom.wall_id[0].min()+1
+    imax = dom.wall_id[0].max()-1
+    jmin = dom.wall_id[1].min()+1
+    jmax = dom.wall_id[1].max()-1
 else:
-    imin = 0; imax = height
-    jmin = 0; jmax = width
+    imin = 0; imax = dom.height
+    jmin = 0; jmax = dom.width
 while (s != Np):
     #people.data[rng.randint(imin,imax+1,Np-s),
     #            rng.randint(jmin+int(0.25*(jmax-jmin)),
@@ -174,14 +285,16 @@ people_ij[:,1] = ind[1]
 results = np.copy(people_ij).reshape((Np,2,1))
 
 ## Static Floor Field
-weight = np.exp(-kappa*dom.door_distance)
+weight = np.exp(-kappa*dom.destinations["door"].distance)
 
 cc = 0
 iter = 0
 
-plot_people_according_to_current_door_distance(1, people, dom,
-    savefig=True, filename=prefix+'/cellular_automata_'+str(iter).zfill(6)+'.png')
-#plot_people_according_to_initial_door_distance(2, people, dom, results)
+# plot_people_according_to_current_door_distance(1, people, dom,
+#     savefig=True, filename=prefix+'/cellular_automata_'+str(iter).zfill(6)+'.png')
+plot_people_according_to_initial_door_distance(1, people, dom,
+      results,savefig=True,
+      filename=prefix+'/cellular_automata_'+str(iter).zfill(6)+'.png')
 
 while (np.sum(people)>0):
     if (update_strategy == "parallel"):
@@ -200,15 +313,18 @@ while (np.sum(people)>0):
     iter += 1
     print("========> time = ",t," number of persons = ",np.sum(people))
     if (cc>=drawper):
-        plot_people_according_to_current_door_distance(1, people, dom,
-            savefig=True, filename=prefix+'/cellular_automata_'+str(iter).zfill(6)+'.png')
-        #plot_people_according_to_initial_door_distance(2, people, dom, results)
+        # plot_people_according_to_current_door_distance(1, people, dom,
+        #     savefig=True,
+        #     filename=prefix+'/cellular_automata_'+str(iter).zfill(6)+'.png')
+        plot_people_according_to_initial_door_distance(1, people, dom,
+            results, savefig=True,
+            filename=prefix+'/cellular_automata_'+str(iter).zfill(6)+'.png')
         cc = 0
 
 #plot_people_according_to_current_door_distance(1, people, dom)
 #plot_people_according_to_initial_door_distance(2, people, dom, results)
 #plot_people_according_to_exit_times(3, dt, people, dom, results)
-plot_people_paths(2, dt, px, people, dom, results,
+plot_people_paths(2, dt, dom.pixel_size, people, dom, results,
                   savefig=True, filename=prefix+'/cellular_automata_paths.png')
 
 plt.show()

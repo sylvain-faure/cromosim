@@ -1,0 +1,238 @@
+{
+  "domains":[
+    {
+      "name":"floor1",
+      "background":"floor1.png",
+      "px":0.025,
+      "width":null,
+      "height":null,
+      "wall_colors":[ [0,0,0] ],
+      "shape_lines":[
+        {
+          "xx": [11.6,11.6],
+          "yy": [6.15,7.3],
+          "linewidth": 2,
+          "outline_color": [0,0,0],
+          "fill_color": [0,0,0]
+        },
+        {
+          "xx": [11.55,11.55],
+          "yy": [6.15,7.3],
+          "linewidth": 4,
+          "outline_color": [0,255,0],
+          "fill_color": [0,255,0]
+        },
+        {
+          "xx": [11.45,11.45],
+          "yy": [6.15,7.3],
+          "linewidth": 3,
+          "outline_color": [255,0,0],
+          "fill_color": [255,0,0]
+        },
+        {
+          "xx": [11.37,11.37],
+          "yy": [6.15,7.3],
+          "linewidth": 4,
+          "outline_color": [0,255,0],
+          "fill_color": [0,255,0]
+        }
+      ],
+      "shape_circles":[
+        {
+          "center_x": 2.3,
+          "center_y": 2.6,
+          "radius": 0.5,
+          "outline_color": [255,255,0],
+          "fill_color": [255,255,0]
+        }
+      ],
+      "shape_ellipses":[
+      ],
+      "shape_rectangles":[
+      ],
+      "shape_polygons":[
+      ],
+      "destinations":[
+        {
+          "name": "assembly_point",
+          "colors": [ [255,255,0] ],
+          "excluded_colors":[ [0,0,0] ],
+          "desired_velocity_from_color":[],
+          "velocity_scale": 1,
+          "next_destination": "assembly_point",
+          "next_domain": "floor1",
+          "next_transit_box":null
+        },
+        {
+          "name": "to_floor0",
+          "colors": [ [255,0,0] ],
+          "excluded_colors":[ [0,0,0] ],
+          "desired_velocity_from_color":[
+            {
+              "color": [0,255,0],
+              "desired_velocity": [1,0]
+            },
+            {
+              "color": [255,0,0],
+              "desired_velocity": [1,0]
+            }
+          ],
+          "velocity_scale": 1,
+          "next_destination": "assembly_point",
+          "next_domain": "floor0",
+          "next_transit_box": [[6.0,6.15],[11.7,6.15],[11.7,7.3],[6.0,7.3]]
+        }
+      ]
+    },
+    {
+      "name":"floor0",
+      "background":"floor0.png",
+      "px":0.025,
+      "width":null,
+      "height":null,
+      "wall_colors":[ [0,0,0] ],
+      "shape_lines":[
+        {
+          "xx": [5.5,5.5],
+          "yy": [6.15,7.35],
+          "linewidth": 4,
+          "outline_color": [0,255,0],
+          "fill_color": [0,255,0]
+        },
+        {
+          "xx": [5.4,5.4],
+          "yy": [6.15,7.35],
+          "linewidth": 3,
+          "outline_color": [255,0,0],
+          "fill_color": [255,0,0]
+        },
+        {
+          "xx": [5.32,5.32],
+          "yy": [6.15,7.35],
+          "linewidth": 4,
+          "outline_color": [0,255,0],
+          "fill_color": [0,255,0]
+        }
+      ],
+      "shape_circles":[
+        {
+          "center_x":14.5,
+          "center_y": 6.9,
+          "radius": 0.5,
+          "outline_color": [255,255,0],
+          "fill_color": [255,255,0]
+        }
+      ],
+      "shape_ellipses":[
+      ],
+      "shape_rectangles":[
+      ],
+      "shape_polygons":[
+      ],
+      "destinations":[
+        {
+          "name": "assembly_point",
+          "colors": [ [255,255,0] ],
+          "excluded_colors":[ [0,0,0] ],
+          "desired_velocity_from_color":[],
+          "velocity_scale": 1,
+          "next_destination": "assembly_point",
+          "next_domain": "floor0",
+          "next_transit_box":null
+        },
+        {
+          "name": "to_floor1",
+          "colors": [ [0,255,0] ],
+          "excluded_colors":[ [0,0,0] ],
+          "desired_velocity_from_color":[
+            {
+              "color": [0,255,0],
+              "desired_velocity": [-1,0]
+            },
+            {
+              "color": [255,0,0],
+              "desired_velocity": [-1,0]
+            }
+          ],
+          "velocity_scale": 1,
+          "next_destination": "assembly_point",
+          "next_domain": "floor1",
+          "next_transit_box": [[6.0,6.15],[11.7,6.15],[11.7,7.3],[6.0,7.3]]
+        }
+      ]
+    }
+  ],
+  "people_init":[
+    {
+      "domain": "floor1",
+      "groups": [
+        {
+          "nb": 10,
+          "radius_distribution": ["uniform",0.14,0.16],
+          "velocity_distribution": ["normal",1.4,0.4],
+          "box": [0.15,21.5,0.2,9.1],
+          "destination": "to_floor0"
+        },
+        {
+          "nb": 10,
+          "radius_distribution": ["uniform",0.14,0.16],
+          "velocity_distribution": ["normal",0.5,0.2],
+          "box": [0.15,21.5,0.2,9.1],
+          "destination": "assembly_point"
+        }
+      ]
+    },
+    {
+      "domain": "floor0",
+      "groups": [
+        {
+          "nb": 20,
+          "radius_distribution": ["uniform",0.14,0.16],
+          "velocity_distribution": ["normal",1.4,0.4],
+          "box": [0.5,21.5,0.5,16.5],
+          "destination": "to_floor1"
+        },
+        {
+          "nb": 20,
+          "radius_distribution": ["uniform",0.14,0.16],
+          "velocity_distribution": ["normal",1.4,0.4],
+          "box": [0.5,21.5,0.5,16.5],
+          "destination": "assembly_point"
+        }
+      ]
+    }
+  ],
+  "sensors":[
+    {
+      "name": "sensor1",
+      "domain": "floor1",
+      "line": [4.5,5.8,4.5,7.4]
+    },
+    {
+      "name": "sensor2",
+      "domain": "floor1",
+      "line": [13.5,7.4,13.5,9.4]
+    },
+    {
+      "name": "sensor3",
+      "domain": "floor0",
+      "line": [12.0,5.5,12.0,9.5]
+    }
+  ],
+  "prefix":"results/",
+  "seed":40,
+  "with_graphes": true,
+  "Tf":20.0,
+  "dt":0.01,
+  "drawper":50,
+  "projection_method": "cvxopt",
+  "dmax":0.3,
+  "dmin_people":0.0,
+  "dmin_walls":0.2,
+  "plot_people":true,
+  "plot_contacts":true,
+  "plot_desired_velocities":false,
+  "plot_velocities":false,
+  "plot_paths":false,
+  "plot_sensors":false
+}

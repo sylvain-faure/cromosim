@@ -1,17 +1,15 @@
 # Authors:
-#     Sylvain Faure <sylvain.faure@math.u-psud.fr>
-#     Bertrand Maury <bertrand.maury@math.u-psud.fr>
+#     Sylvain Faure <sylvain.faure@universite-paris-saclay.fr>
+#     Bertrand Maury <bertrand.maury@universite-paris-saclay.fr>
 # License: GPL
 
-import sys
-import scipy as sp
 import numpy as np
-try:
-    from scipy.misc import imread
-except:
-    from imageio import imread
+import scipy as sp
+import sys
+import random
 import matplotlib
 import matplotlib.pyplot as plt
+
 from matplotlib.lines import Line2D
 from matplotlib.patches import Circle, Arc, Polygon, Wedge
 from matplotlib.collections import LineCollection, PatchCollection
@@ -65,7 +63,7 @@ def iteration(it,Nrooms,DoorRoomCapacity,NPir,NPrir,NPwir,Nior,List_iOr,T_iOr,Fl
         for k in np.arange(Nior[ir]):
             NPir[it,ir] += Flux[it,int(List_iOr[ir,k])]
             timelag = int(T_iOr[ir,k])
-            if timelag < it :
+            if timelag < it:
                 NPwir[it,ir]+=Flux[it-timelag,int(List_iOr[ir,k])]
             NPrir[ir,k] = 0
             for i in np.arange(min(it,timelag)):
@@ -81,7 +79,7 @@ def plot_compt(ifig, RoomNames, RoomCenters, DoorCenters, CircAngles, NPir,
 
     Parameters
     ----------
-    ifig : int
+    ifig: int
         figure number
     RoomNames: list
         number of rooms
@@ -142,7 +140,7 @@ def plot_compt(ifig, RoomNames, RoomCenters, DoorCenters, CircAngles, NPir,
             yy0 = DoorCenters[ir,1]
             xx1 = DoorCenters[jr,0]
             yy1 = DoorCenters[jr,1]
-            ## line : [xx0, yy0, xx1, yy1]
+            ## line: [xx0, yy0, xx1, yy1]
             len = np.sqrt( (xx0-xx1)**2+(yy0-yy1)**2 )
             s = 0.5*NPrir[ir,id]*area/len
             circles0.append(Polygon( np.array([[xx0-s,yy0],[xx0+s,yy0], \
@@ -150,7 +148,7 @@ def plot_compt(ifig, RoomNames, RoomCenters, DoorCenters, CircAngles, NPir,
                                      closed=True, fill=True))
             colors0.append(1.0)
     # for line in Lines:
-    #     ##l : [xx0, yy0, xx1, yy1]
+    #     ##l: [xx0, yy0, xx1, yy1]
     #     s = l[]
     #     circles0.append(Polygon(np.array([[],[]]), True)
 

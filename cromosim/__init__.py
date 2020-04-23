@@ -1,15 +1,21 @@
 # Authors:
-#     Sylvain Faure <sylvain.faure@math.u-psud.fr>
-#     Bertrand Maury <bertrand.maury@math.u-psud.fr>
+#     Sylvain Faure <sylvain.faure@universite-paris-saclay.fr>
+#     Bertrand Maury <bertrand.maury@universite-paris-saclay.fr>
 #
 # License: GPL
 
 name = "cromosim"
 
+import numpy as np
+import scipy as sp
+import sys
+import random
+import matplotlib
+import matplotlib.pyplot as plt
+import cvxopt
+
 from .domain import Domain
 from .domain import Destination
-from .map import Target
-from .map import Map
 from . import ca
 from . import ftl
 from . import micro

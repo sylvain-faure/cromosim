@@ -1,0 +1,88 @@
+{
+  "domains":[
+    {
+      "name":"stadium",
+      "background":"stadium.png",
+      "px":0.1,
+      "width":null,
+      "height":null,
+      "wall_colors":[ [0,0,0] ],
+      "shape_lines":[
+      ],
+      "shape_circles":[
+      ],
+      "shape_ellipses":[
+      ],
+      "shape_rectangles":[
+      ],
+      "shape_polygons":[
+      ],
+      "destinations":[
+        {
+          "name": "running_track",
+          "colors": [ [255,0,0] ],
+          "excluded_colors":[ [0,0,0],[0,255,0] ],
+          "desired_velocity_from_color":[
+            {
+              "color": [255,0,0],
+              "desired_velocity": [-1,0]
+            },
+            {
+              "color": [0,255,0],
+              "desired_velocity": [-1,0]
+            }
+          ],
+          "velocity_scale": 1,
+          "next_destination": "running_track",
+          "next_domain": "stadium",
+          "next_transit_box":null
+        }
+      ]
+    }
+  ],
+  "people_init":[
+    {
+      "domain": "stadium",
+      "groups": [
+        {
+          "nb": 20,
+          "radius_distribution": ["uniform",0.4,0.6],
+          "velocity_distribution": ["uniform",2.0,4.0],
+          "box": [70.0,74.0,88.5,95.5],
+          "destination": "running_track"
+        }
+      ]
+    }
+  ],
+  "sensors":[
+    {
+      "name": "sensor1",
+      "domain": "stadium",
+      "line": [83,85,83,99]
+    }
+  ],
+  "prefix":"results/",
+  "seed":40,
+  "with_graphes": true,
+  "Tf":105.0,
+  "dt":0.005,
+  "drawper":200,
+  "mass":80.0,
+  "tau":0.5,
+  "F":2000.0,
+  "kappa":120000.0,
+  "delta":0.08,
+  "Fwall":2000.0,
+  "lambda":0.5,
+  "eta":240000.0,
+  "dmax":0.6,
+  "projection_method": "cvxopt",
+  "dmin_people":0.1,
+  "dmin_walls":0.5,
+  "plot_people":true,
+  "plot_contacts":false,
+  "plot_desired_velocities":false,
+  "plot_velocities":false,
+  "plot_paths":false,
+  "plot_sensors":false
+}

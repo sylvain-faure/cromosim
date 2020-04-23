@@ -1,15 +1,51 @@
 {
-  "name":"room_60x30",
+  "domain":
+  {
+    "name":"room_60x30",
+    "background":"",
+    "px":0.4,
+    "width":60,
+    "height":30,
+    "wall_colors":[ [0,0,0] ],
+    "shape_lines":[
+      {
+        "xx": [11.6,12.4],
+        "yy": [0.4,0.4],
+        "linewidth": 2,
+        "outline_color": [255,0,0],
+        "fill_color": [255,0,0]
+      },
+      {
+        "xx": [12.4,23.6,23.6,0,0,11.6],
+        "yy": [0.4,0.4,12,12,0.4,0.4],
+        "linewidth": 2,
+        "outline_color": [0,0,0],
+        "fill_color": [0,0,0]
+      }
+    ],
+    "shape_circles":[
+    ],
+    "shape_ellipses":[
+    ],
+    "shape_rectangles":[
+    ],
+    "shape_polygons":[
+    ],
+    "destinations":[
+      {
+        "name": "door",
+        "colors": [ [255,0,0] ],
+        "excluded_colors":[ [0,0,0] ],
+        "desired_velocity_from_color":[],
+        "velocity_scale": 1,
+        "next_destination": null,
+        "next_domain": null,
+        "next_transit_box":null
+      }
+    ]
+  },
   "prefix":"results/",
-  "background":"",
-  "width":60,
-  "height":30,
-  "px":0.4,
-  "wall_lines":[ [[12.4,23.6,23.6,0,0,11.6],[0.4,0.4,12,12,0.4,0.4]] ],
-  "wall_ellipses":[ ],
-  "wall_polygons":[ ],
-  "door_lines":[ [[11.6,12.4],[0.4,0.4]] ],
-  "seed":20,
+  "seed":40,
   "Np":140,
   "Tf":100.0,
   "dt":0.005,

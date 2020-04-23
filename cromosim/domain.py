@@ -1,138 +1,245 @@
 # Authors:
-#     Sylvain Faure <sylvain.faure@math.u-psud.fr>
-#     Bertrand Maury <bertrand.maury@math.u-psud.fr>
+#     Sylvain Faure <sylvain.faure@universite-paris-saclay.fr>
+#     Bertrand Maury <bertrand.maury@universite-paris-saclay.fr>
 # License: GPL
 
-import scipy as sp
 import numpy as np
-try:
-    from scipy.misc import imread
-except:
-    from imageio import imread
+import scipy as sp
+import sys
+import random
 import matplotlib
 import matplotlib.pyplot as plt
+
 from matplotlib.patches import Ellipse, Circle, Rectangle, Polygon
 from matplotlib.lines import Line2D
 import PIL
 from PIL import Image
 from PIL import ImageDraw
 import skfmm
-import sys
 
 class Destination():
+    """
+    A Destination object contains all the information necessary to direct
+    people to a goal, for example a door, a staircase or another floor.
 
+    Attributes
+    ----------
+
+    name: string
+       name of the destination
+    colors: list
+       List of colors ``[ [r,g,b],... ]`` drawing the destination.
+       For example, a door can be represented by a red line.
+    excluded_colors: list
+        List of colors ``[ [r,g,b],... ]`` representing obstacles that cannot be crossed for
+        someone wishing to go to this destination: the walls of course, but
+        possibly another objects only visible to the people concerned by
+        this destination.
+    desired_velocity_from_color: list
+        Allows you to associate a desired velocity (vx, vy) with a
+        color (r, g, b):
+            ``[ [r,g,b, vx,vy],... ]``.
+    fmm_speed: numpy array
+        To automatically calculate the desired velocity leading to this
+        destination, a Fast-Marching method is used to calculate the travel
+        time to this destination. The opposite of the gradient of this time
+        gives the desired velocity. This method solves the Eikonal equation
+        ``|grad D| = 1/fmm_speed``. By changing the ``fmm_speed`` (1 everywhere by
+        default) you can make certain areas slower and thus modify the
+        desired velocity to divert people
+    velocity_scale: float
+        Multiplying coefficient used in front of the desired velocity vector
+        (which is renormalized). For example on a staircase one may wish to
+        reduce the speed of people.
+    next_destination: string
+        Name of the next destination. Useful for linking destinations one
+        after the other
+    next_domain: string
+        Name of the next domain where is the next_destination
+    next_transit_box: list
+        The people in the current domain present in this box will be duplicated
+        in the next_domain. A box is defined by four points:
+            ``[x0, y0, x1, y1, x2, y2, x3, y3]``
+    distance: numpy array
+        Distance (if ``fmm_speed`` == 1) or travel time (if ``fmm_speed`` != 1)
+        to the destination
+    desired_velocity_X: numpy array
+        First component of the desired velocity
+    desired_velocity_Y: numpy array
+        Second component of the desired velocity
+
+    Examples
+    --------
+
+     * Examples with one destination:
+        ``cromosim/examples/domain/domain_room.py``
+        ``cromosim/examples/domain/domain_stadium.py``
+     * Example with several destinations:
+        ``cromosim/examples/domain/domain_shibuya_crossing.py``
+     * Example with a destination described in a json file
+        ``cromosim/examples/domain/domain_from_json.py``
+    """
     def __init__(self,
-                 name = 'destination',
-                 colors = [],
+                 name,
+                 colors,
                  excluded_colors = [],
-                 gradient_from_color=[],
-                 speed=None,
-                 next_destination='',
-                 next_transit_box=None,
-                 next_domain_id = None):
+                 desired_velocity_from_color=[],
+                 fmm_speed=None,
+                 velocity_scale = 1,
+                 next_destination=None,
+                 next_domain = None,
+                 next_transit_box=None):
+        """
+        Constructor of a Destination object
+
+        Parameters
+        ----------
+
+        name: string
+           name of the destination
+        colors: list ``[ [r,g,b],... ]``
+           List of colors drawing the destination. For example, a door can be
+           represented by a red line.
+        excluded_colors: = list ``[ [r,g,b],... ]``
+            List of colors representing obstacles that cannot be crossed for
+            someone wishing to go to this destination: the walls of course, but
+            possibly another objects only visible to the people concerned by
+            this destination.
+        desired_velocity_from_color: list ``[ [r,g,b, vx,vy],... ]``
+            Allows you to associate a desired velocity (vx, vy) with a
+            color (r, g, b)
+        fmm_speed:= numpy array
+            To automatically calculate the desired velocity leading to this
+            destination, a Fast-Marching method is used to calculate the travel
+            time to this destination. The opposite of the gradient of this time
+            gives the desired velocity. This method solves the Eikonal equation
+            |grad D| = 1/fmm_speed. By changing the fmm_speed (1 everywhere by
+            default) you can make certain areas slower and thus modify the
+            desired velocity to divert people
+        velocity_scale: float
+            Multiplying coefficient used in front of the desired velocity vector
+            (which is renormalized). For example on a staircase one may wish to
+            reduce the speed of people.
+        next_destination: string
+            Name of the next destination. Useful for linking destinations one
+            after the other
+        next_domain:
+            Name of the next domain where is the next_destination
+        next_transit_box:
+            The people in the current domain present in this box will be duplicated
+            in the ``next_domain``.
+
+        """
         self.name = name
         self.colors = colors
         self.excluded_colors = excluded_colors
-        self.gradient_from_color = gradient_from_color
-        self.speed = speed
+        self.desired_velocity_from_color = desired_velocity_from_color
+        self.fmm_speed = fmm_speed
+        self.velocity_scale = velocity_scale
         self.next_destination = next_destination
-        self.next_transit_box = next_transit_box
-        self.next_domain_id = next_domain_id
-        self.virtual_people_indexes = []
-        self.X = None
-        self.Y = None
+        self.next_transit_box = next_transit_box # [xmin,xmax,ymin,ymax]
+        self.next_domain = next_domain
         self.distance = None
         self.desired_velocity_X = None
         self.desired_velocity_Y = None
 
     def __str__(self):
-        return "--> Destination : "+  \
-        "\n    name : "+str(self.name) + \
-        "\n    colors : "+str(self.colors) + \
-        "\n    excluded_colors : "+str(self.excluded_colors) + \
-        "\n    gradient_from_color : "+str(self.gradient_from_color) + \
-        "\n    next_destination : "+str(self.next_destination)
+        """
+        Print this Destination object
+        """
+        return "--> Destination: " \
+        + "\n    name: "+str(self.name) \
+        + "\n    colors: "+str(self.colors) \
+        + "\n    excluded_colors: "+str(self.excluded_colors) \
+        + "\n    desired_velocity_from_color: "+str(self.desired_velocity_from_color) \
+        + "\n    next_destination: "+str(self.next_destination) \
+        + "\n    next_domain: "+str(self.next_domain) \
+        + "\n    velocity_scale: "+str(self.velocity_scale)
 
 
 
 class Domain():
     """
-    To define the computational domain :
-        - a background : empty (white) or a PNG image which only \
-        contains the colors white, red (for the doors) and black \
-        (for the walls)
-        - supplementary doors represented by matplotlib shapes : \
-        line2D
-        - supplementary walls represented by matplotlib shapes : \
-        line2D, circle, ellipse, rectangle or polygon
+    To define the computational domain:
+     * a background: empty (white) or a PNG image which only
+       contains the colors white, red (for the doors) and black
+       (for the walls)
+     * supplementary doors represented by matplotlib shapes:
+        ``line2D``
+     * supplementary walls represented by matplotlib shapes:
+        ``line2D``, ``circle``, ``ellipse``, ``rectangle`` or ``polygon``
 
     To compute the obstacle distances and the desired velocities
 
     Attributes
     ----------
 
-    pixel_size : float
+    pixel_size: float
         size of a pixel in meters
-    width : int
+    width: int
         width of the background image (number of pixels)
-    height : int
+    height: int
         height of the background image (number of pixels)
-    xmin : float
+    xmin: float
         x coordinate of the origin (bottom left corner)
-    xmax : float
-        xmax = xmin + width*pixel_size
-    ymin : float
+    xmax: float
+        ``xmax = xmin + width*pixel_size``
+    ymin: float
         y coordinate of the origin (bottom left corner)
-    ymax : float
-        ymax = ymin + height*pixel_size
-    X : numpy array
+    ymax: float
+        ``ymax = ymin + height*pixel_size``
+    X: numpy array
         x coordinates (meshgrid)
-    Y : numpy array
+    Y: numpy array
         y coordinates (meshgrid)
-    image : numpy array
+    image: numpy array
         pixel array (r,g,b,a)
-        The Pillow image is converted to a numpy arrays, then \
-        using flipud
-        the origin of the image is put it down left instead the \
+        The Pillow image is converted to a numpy arrays, then
+        using ``flipud``
+        the origin of the image is put it down left instead the
         top left
-    image_red : numpy array
+    image_red: numpy array
         red values of the image (r,g,b,a)
-    image_green : numpy array
+    image_green: numpy array
         green values of the image (r,g,b,a)
-    image_blue : numpy array
+    image_blue: numpy array
         blue values of the image (r,g,b,a)
-    wall_mask : numpy array
-        boolean array : true for wall pixels
-    wall_mask_id : numpy array
+    wall_mask: numpy array
+        boolean array: true for wall pixels
+    wall_mask_id: numpy array
         wall pixel indices
-    wall_distance : numpy array
+    wall_distance: numpy array
         distance (m) to the wall
-    wall_grad_X : numpy array
+    wall_grad_X: numpy array
         gradient of the distance to the wall (first component)
-    wall_grad_Y : numpy array
+    wall_grad_Y: numpy array
         gradient of the distance to the wall (second component)
-    door_distance : numpy array
+    door_distance: numpy array
         distance (m) to the door
-    desired_velocity_X : numpy array
-        opposite of the gradient of the distance to the door : desired velocity \
+    desired_velocity_X: numpy array
+        opposite of the gradient of the distance to the door: desired velocity
          (first component)
-    desired_velocity_Y : numpy array
-        opposite of the gradient of the distance to the door : desired velocity \
+    desired_velocity_Y: numpy array
+        opposite of the gradient of the distance to the door: desired velocity
         (second component)
 
     Examples
     --------
 
-    - An example with a domain built using only shape elements :
-      cromosim/examples/domain_manually_computed.py
-
-    - An example with a domain built using an image and shape elements :
-      cromosim/examples/domain_auto_computed.py
+    * A simple room
+        ``cromosim/examples/domain/domain_room.py``
+    * A circular domain
+        ``cromosim/examples/domain/domain_stadium.py``
+    * A domain with several destinations
+        ``cromosim/examples/domain/domain_shibuya_crossing.py``
+    * A domain built from json file (where is its description)
+        ``cromosim/examples/domain/domain_from_json.py``
     """
 
     def __init__(self, name = 'Domain', background = 'White', pixel_size = 1.0,
                  xmin = 0.0, width = 100,
                  ymin = 0.0, height = 100,
+                 wall_colors = [[0,0,0]],
                  npzfile = None):
         """
         Constructor of a Domain object
@@ -140,24 +247,23 @@ class Domain():
         Parameters
         ----------
 
-        name : string
-            domain name (default : 'Domain')
-        background : string
-            name of the background image (default : 'White', no image)
-        pixel_size : float
-            size of a pixel in meters (default : 1.0)
-        xmin : float
-            x coordinate of the origin, bottom left corner (default : 0.0)
-        ymin : float
-            y coordinate of the origin, bottom left corner (default : 0.0)
-        width : int
-            width of the background image (default : 100 pixels)
-        height : int
-            height of the background image (default : 100 pixels)
-        npzfile : string
+        name: string
+            domain name (default: 'Domain')
+        background: string
+            name of the background image (default: 'White', no image)
+        pixel_size: float
+            size of a pixel in meters (default: 1.0)
+        xmin: float
+            x coordinate of the origin, bottom left corner (default: 0.0)
+        ymin: float
+            y coordinate of the origin, bottom left corner (default: 0.0)
+        width: int
+            width of the background image (default: 100 pixels)
+        height: int
+            height of the background image (default: 100 pixels)
+        npzfile: string
             to build domain from a npz file which contains all variables
         """
-<<<<<<< HEAD
         if (npzfile is None):
             self.__shapes = []
             self.__outline_color_shapes = []
@@ -169,154 +275,117 @@ class Domain():
             self.pixel_size = pixel_size
             self.xmin, self.ymin = [xmin, ymin]
             if (self.__background != 'White'):
-                image = imread(self.__background)
-                self.width = image.shape[1]  ## width = number of columns
-                self.height = image.shape[0] ## height = number of rows
+                self.image = Image.open(self.__background)
+                self.width = self.image.size[0]
+                self.height = self.image.size[1]
             else:
                 self.width, self.height = [width, height]
+                self.image =  Image.new("RGB", (self.width, self.height), "white")
+
             self.xmax = self.xmin + self.width*pixel_size
             self.ymax = self.ymin + self.height*pixel_size
             self.X, self.Y = sp.meshgrid(sp.arange(self.width), sp.arange(self.height))
             self.X = 0.5*self.pixel_size + self.xmin + self.X*self.pixel_size
             self.Y = 0.5*self.pixel_size + self.ymin + self.Y*self.pixel_size
-            self.wall_colors = [[0,0,0]] # walls are black by default
+            self.wall_colors = wall_colors # walls are black by default
             self.wall_mask = None
             self.wall_id = None
             self.wall_distance = None
             self.wall_grad_X = None
             self.wall_grad_Y = None
-            if (self.__background != 'White'):
-                self.image = Image.open(self.__background)
-            else:
-                self.image =  Image.new("RGB", (self.width, self.height), "white")
             self.draw = ImageDraw.Draw(self.image)
-=======
-        self.__walls = []
-        self.__doors = []
-        self.__image_filename = ''
-        self.__name = name
-        self.__background = background
-        self.pixel_size = pixel_size
-        self.xmin, self.ymin = [xmin, ymin]
-        if (self.__background != 'White'):
-            image = imread(self.__background)
-            self.width = image.shape[1]  ## width = number of columns
-            self.height = image.shape[0] ## height = number of rows
-        else:
-            self.width, self.height = [width, height]
-        self.xmax = self.xmin + self.width*pixel_size
-        self.ymax = self.ymin + self.height*pixel_size
-        self.X, self.Y = np.meshgrid(np.arange(self.width), np.arange(self.height))
-        self.X = 0.5*self.pixel_size + self.xmin + self.X*self.pixel_size
-        self.Y = 0.5*self.pixel_size + self.ymin + self.Y*self.pixel_size
-        self.wall_distance = None
-        self.wall_grad_X = None
-        self.wall_grad_Y = None
-        self.desired_velocity_X = None
-        self.desired_velocity_Y = None
-        self.door_distance = None
->>>>>>> 680862a0447594077e44b73b1b1f0908dfdc3a94
 
         else:
             data = sp.load(npzfile,allow_pickle=True)
-            #print("read shapes : ",data["__shapes"])
-            shapes=data["__shapes"].tolist()
-            #print("read color shapes : ",data["__color_shapes"])
-            color_shapes=data["__color_shapes"].tolist()
-            #print("read name : ",data["name"])
+            self.__shapes=data["__shapes"].tolist()
+            self.__outline_color_shapes=data["__outline_color_shapes"].tolist()
+            self.__fill_color_shapes=data["__fill_color_shapes"].tolist()
+            self.__image_filename = data["__image_filename"]
+            #print("read name: ",data["name"])
             self.name=str(data["name"])
-            #print("read __background : ",data["__background"])
+            #print("read __background: ",data["__background"])
             self.__background=str(data["__background"])
-            #print("read destinations : ",data["destinations"])
+            #print("read destinations: ",data["destinations"])
             self.destinations=dict(data["destinations"].tolist())
-            #print("read pixel_size : ",data["pixel_size"])
+            #print("read pixel_size: ",data["pixel_size"])
             self.pixel_size=data["pixel_size"]
-            #print("read xmin : ",data["xmin"])
+            #print("read xmin: ",data["xmin"])
             self.xmin=data["xmin"]
-            #print("read ymin : ",data["ymin"])
+            #print("read ymin: ",data["ymin"])
             self.ymin=data["ymin"]
-            #print("read xmax : ",data["xmax"])
+            #print("read xmax: ",data["xmax"])
             self.xmax=data["xmax"]
-            #print("read ymax : ",data["ymax"])
+            #print("read ymax: ",data["ymax"])
             self.ymax=data["ymax"]
-            #print("read width : ",data["width"])
+            #print("read width: ",data["width"])
             self.width=data["width"]
-            #print("read height : ",data["height"])
+            #print("read height: ",data["height"])
             self.height=data["height"]
-            #print("read X : ",data["X"])
+            #print("read X: ",data["X"])
             self.X=data["X"]
-            #print("read Y : ",data["Y"])
+            #print("read Y: ",data["Y"])
             self.Y=data["Y"]
-            #print("read wall_colors : ",data["wall_colors"])
+            #print("read wall_colors: ",data["wall_colors"])
             self.wall_colors=data["wall_colors"]
-            #print("read wall_mask : ",data["wall_mask"])
+            #print("read wall_mask: ",data["wall_mask"])
             self.wall_mask=data["wall_mask"]
-            #print("read wall_id : ",data["wall_id"])
+            #print("read wall_id: ",data["wall_id"])
             self.wall_id=data["wall_id"]
-            #print("read wall_distance : ",data["wall_distance"])
+            #print("read wall_distance: ",data["wall_distance"])
             self.wall_distance=data["wall_distance"]
-            #print("read wall_grad_X : ",data["wall_grad_X"])
+            #print("read wall_grad_X: ",data["wall_grad_X"])
             self.wall_grad_X=data["wall_grad_X"]
-            #print("read wall_grad_Y : ",data["wall_grad_Y"])
+            #print("read wall_grad_Y: ",data["wall_grad_Y"])
             self.wall_grad_Y=data["wall_grad_Y"]
-            ## Build again the image with shapes... (which can not be saved in a npz file...)
-            if (self.__background != 'White'):
-                self.image = Image.open(self.__background)
-            else:
-                self.image =  Image.new("RGB", (self.width, self.height), "white")
-            self.draw = ImageDraw.Draw(self.image)
-            # Add shapes
-            self.__shapes = []
-            self.__outline_color_shapes = []
-            self.__fill_color_shapes = []
-            for i,shape in enumerate(shapes):
-                 self.add_shape(shape,
-                    outline_color=outline_color_shapes[i],
-                    fill_color=fill_color_shapes[i])
-            self.build_domain()
+            self.image = data["image"]
 
     def save(self, outfile):
-        """
-        To save the content of the domain in a file
+        """To save the content of the domain in a file
 
         Parameters
         ----------
 
-        outfile : string
+        outfile: string
             output filename
         """
         sp.savez(outfile,
-        __wall_shapes=self.__wall_shapes,
-        __wall_color_shapes=self.__wall_color_shapes,
-        name=self.name,
-        __background=self.__background,
-        pixel_size=self.pixel_size,
-        xmin=self.xmin,
-        ymin=self.ymin,
-        xmax=self.xmax,
-        ymax=self.ymax,
+        __shapes = self.__shapes,
+        __outline_color_shapes = self.__outline_color_shapes,
+        __fill_color_shapes = self.__fill_color_shapes,
+        __image_filename = self.__image_filename,
+        name = self.name,
+        __background = self.__background,
+        pixel_size = self.pixel_size,
+        xmin = self.xmin,
+        ymin = self.ymin,
+        xmax = self.xmax,
+        ymax = self.ymax,
         width=self.width,
         height=self.height,
-        X=self.X,
-        Y=self.Y,
-        wall_colors=self.wall_colors,
-        wall_mask=self.wall_mask,
-        wall_id=self.wall_id,
-        wall_distance=self.wall_distance,
-        wall_grad_X=self.wall_grad_X,
-        wall_grad_Y=self.wall_grad_Y,
-        destinations=self.destinations)
+        X = self.X,
+        Y = self.Y,
+        wall_colors = self.wall_colors,
+        wall_mask = self.wall_mask,
+        wall_id = self.wall_id,
+        wall_distance = self.wall_distance,
+        wall_grad_X = self.wall_grad_X,
+        wall_grad_Y = self.wall_grad_Y,
+        destinations = self.destinations,
+        image = self.image)
 
     def add_shape(self, shape, outline_color = [0,0,0], fill_color = [255,255,255]):
-        """
-        To add a matplotlib shape : \
-        line2D, circle, ellipse, rectangle or polygon
+        """To add a matplotlib shape:
+        ``line2D``, ``circle``, ``ellipse``, ``rectangle`` or ``polygon``
 
         Parameters
         ----------
 
-        shape : matplotlib shape
+        shape: matplotlib shape
             line2D, circle, ellipse, rectangle or polygon
+        outline_color: list
+            rgb color
+        fill_color: list
+            rgb color
         """
         self.__shapes.append(shape)
         self.__outline_color_shapes.append(outline_color)
@@ -348,103 +417,41 @@ class Domain():
                             str(outline_color[1])+","+
                             str(outline_color[2])+")")
 
-    # def add_door_shape(self, shape, color = [255,0,0]):
-    #     """
-    #     To add a door represented by matplotlib shapes : \
-    #     line2D (only)
-    #
-    #     Parameters
-    #     ----------
-    #
-    #     shape : matplotlib shape
-    #         line2D
-    #     """
-    #     self.__door_shapes.append(shape)
-    #     self.__door_color_shapes.append(color)
-    #     linewidth = shape.get_linewidth()
-    #     xy = shape.get_xydata()/self.pixel_size
-    #     xy[:,1] = self.height - xy[:,1]
-    #     self.draw.line(sp.around(xy.flatten()).tolist(), width=int(linewidth),
-    #         fill="rgb("+str(color[0])+","+str(color[1])+","+str(color[2])+")")
 
     def build_domain(self):
-        """
-        To build the domain : reads the background image (if supplied) \
+        """To build the domain: reads the background image (if supplied) \
         and initializes all the color arrrays
         """
-<<<<<<< HEAD
         self.__image_filename = self.name+'_domain.png'
         self.image.save(self.__image_filename)
-=======
-        if (self.__background != 'White'):
-            image = Image.open(self.__background)
-        else:
-            image =  Image.new("RGB", (self.width, self.height), "white")
-        draw = ImageDraw.Draw(image)
-        for iw in self.__walls:
-            if ( isinstance(iw, Circle) or isinstance(iw, Ellipse) or
-                 isinstance(iw, Rectangle) or isinstance(iw, Polygon)):
-                 xy = iw.get_verts()/self.pixel_size
-                 xy[:,1] = self.height - xy[:,1]
-                 draw.polygon(np.around(xy.flatten()).tolist(),
-                              outline="rgb(0, 0, 0)", fill="rgb(0, 0, 0)")
-            elif  isinstance(iw, Line2D):
-                 linewidth = iw.get_linewidth()
-                 xy = iw.get_xydata()/self.pixel_size
-                 xy[:,1] = self.height - xy[:,1]
-                 draw.line(np.around(xy.flatten()).tolist(), width=int(linewidth),
-                           fill="rgb(0, 0, 0)")
-        for id in self.__doors:
-            linewidth = id.get_linewidth()
-            xy = id.get_xydata()/self.pixel_size
-            xy[:,1] = self.height - xy[:,1]
-            draw.line(np.around(xy.flatten()).tolist(), width=int(linewidth),
-                      fill="rgb(255, 0, 0)")
-        self.__image_filename = self.__name+'_domain.png'
-        image.save(self.__image_filename)
->>>>>>> 680862a0447594077e44b73b1b1f0908dfdc3a94
         ## Easy way to convert a Pillow image to numpy arrays...
         ## The origin of img is at the top (left) and flipud allows to put it down...
-        self.image = np.flipud(imread(self.__image_filename))
+        self.image = np.flipud(np.array(self.image))
         self.image_red   = self.image[:,:,0]
         self.image_green = self.image[:,:,1]
         self.image_blue  = self.image[:,:,2]
-<<<<<<< HEAD
         self.wall_mask = sp.zeros_like(self.image_red)
         for c in self.wall_colors:
             self.wall_mask += (self.image_red == c[0]) \
                         *(self.image_green == c[1]) \
                         *(self.image_blue == c[2])
         self.wall_id = sp.where( self.wall_mask>0 )
-        ## Compute wall distances : wall = "wall_colors" pixels
+        ## Compute wall distances: wall = "wall_colors" pixels
         if (self.wall_id[0].size>0):
             self.compute_wall_distance()
         else:
-            print("WARNING : Failed to compute wall distance!")
-            print("WARNING : Wall colors are ",self.wall_colors)
-            print("WARNING : Check that there are pixels with these colors!")
+            print("WARNING: Failed to compute wall distance!")
+            print("WARNING: Wall colors are ",self.wall_colors)
+            print("WARNING: Check that there are pixels with these colors!")
             sys.exit()
-=======
-        self.mask =  (self.image_red == 0) \
-                    *(self.image_green == 0) \
-                    *(self.image_blue == 0)
-        self.mask_id = np.where( self.mask )
->>>>>>> 680862a0447594077e44b73b1b1f0908dfdc3a94
 
     def compute_wall_distance(self):
-        """
-        To compute the geodesic distance to the walls in using \
+        """To compute the geodesic distance to the walls in using
         a fast-marching method
         """
-<<<<<<< HEAD
         phi = sp.ones(self.image_red.shape)
         if (len(self.wall_id[0])>0):
             phi[self.wall_id] = 0
-=======
-        phi = np.ones(self.image_red.shape)
-        if (len(self.mask_id[0])>0):
-            phi[self.mask_id] = 0
->>>>>>> 680862a0447594077e44b73b1b1f0908dfdc3a94
             self.wall_distance = skfmm.distance(phi, dx=self.pixel_size)
             grad = np.gradient(self.wall_distance,edge_order=2)
             grad_X = grad[1]/self.pixel_size
@@ -456,26 +463,17 @@ class Domain():
         else:
             self.wall_distance = 1.0e99*np.ones(self.image_red.shape)
 
+
     def add_destination(self, dest):
+        """To compute the desired velocities to this destination
+        and then to add this Destination object to this domain.
+
+        Parameters
+        ----------
+
+        dest: Destination
+            contains the Destination object which must be added to this domain
         """
-        To compute the geodesic distance to the doors in using \
-        a fast-marching method. The opposite of the gradient of this distance
-        corresponds to the desired velocity which permits to reach the closest
-        door
-
-        Returns
-        -------
-
-        door_distance : numpy array
-            distance to the closest door
-        desired_velocity_X : numpy array
-            opposite of the gradient of the door distance, x component
-        desired_velocity_Y : numpy array
-            opposite of the gradient of the door distance, y component
-        """
-<<<<<<< HEAD
-
-        ## Compute desired velocities to this destination, in this domain...
 
         # Compute mask for dest.excluded_colors (which can be for example the
         # wall colors...)
@@ -496,12 +494,12 @@ class Domain():
         mask_id = sp.where( (dest_mask>=1) )
 
         # Define rhs of the Eikonal equation (i.e. the speed)
-        if (dest.speed is not None):
-            if (dest.speed.shape != self.image_red.shape):
+        if (dest.fmm_speed is not None):
+            if (dest.fmm_speed.shape != self.image_red.shape):
                 print("Bad speed shape ! Failed to compute the destination distance...")
                 sys.exit()
         else:
-            dest.speed = sp.ones_like(self.image_red)
+            dest.fmm_speed = sp.ones_like(self.image_red)
 
 
         if (mask_id[0].size>0):
@@ -510,7 +508,7 @@ class Domain():
             phi[mask_id] = 0
 
             phi = sp.ma.MaskedArray(phi, mask=excluded_color_mask)
-            dest.distance = skfmm.travel_time(phi, dest.speed, dx=self.pixel_size)
+            dest.distance = skfmm.travel_time(phi, dest.fmm_speed, dx=self.pixel_size)
             #dest.distance = skfmm.distance(phi, dx=self.pixel_size)
             if (excluded_color_id[0].size>0):
                 tmp_dist = dest.distance.filled(9999)
@@ -521,7 +519,7 @@ class Domain():
             dest.distance = -sp.ones_like(self.image_red)
             grad = sp.gradient(sp.zeros_like(self.image_red),edge_order=2)
 
-        for l,rgbgrad in enumerate(dest.gradient_from_color):
+        for l,rgbgrad in enumerate(dest.desired_velocity_from_color):
             test = (self.image_red == int(rgbgrad[0])) \
                   *(self.image_green == int(rgbgrad[1])) \
                   *(self.image_blue == int(rgbgrad[2]))
@@ -529,18 +527,6 @@ class Domain():
             grad[1][indices] = -rgbgrad[3]
             grad[0][indices] = -rgbgrad[4]
 
-=======
-        mask_red = (self.image_red == 255) \
-                  *(self.image_green == 0) \
-                  *(self.image_blue == 0)
-        ind_red = np.where( mask_red )
-        phi = np.ones(self.image_red.shape)
-        phi[ind_red] = 0
-        phi = np.ma.MaskedArray(phi, mask=self.mask)
-        self.door_distance = skfmm.distance(phi, dx=self.pixel_size)
-        tmp_dist = self.door_distance.filled(9999)
-        grad = np.gradient(tmp_dist,edge_order=2)
->>>>>>> 680862a0447594077e44b73b1b1f0908dfdc3a94
         grad_X = -grad[1]/self.pixel_size
         grad_Y = -grad[0]/self.pixel_size
         norm = np.sqrt(grad_X**2+grad_Y**2)
@@ -552,122 +538,120 @@ class Domain():
         except:
             self.destinations = { dest.name: dest }
 
-    def people_desired_velocity(self, people, dest_name='default', I=None, J=None):
-        """
-        This function determines people desired velocities from the desired \
+
+    def people_desired_velocity(self, xyr, people_dest, I=None, J=None):
+        """This function determines people desired velocities from the desired \
         velocity array computed by Domain thanks to a fast-marching method.
 
         Parameters
         ----------
-        people: numpy array
-            people coordinates and radius : x,y,r
-        dest_name: string
-            name of people destination
-        I : numpy array (None by default)
+        xyr: numpy array
+            people coordinates and radius: x,y,r
+        people_dest: list of string
+            destination for each individual
+        I: numpy array (None by default)
             people index i
-        J : numpy array (None by default)
+        J: numpy array (None by default)
             people index j
 
         Returns
         -------
-        I : numpy array
+        I: numpy array
             people index i
-        J : numpy array
+        J: numpy array
             people index j
-        Vd : numpy array
+        Vd: numpy array
             people desired velocity
         """
         if ((I is None) or (J is None)):
-            I = sp.floor((people[:,1]-self.ymin-0.5*self.pixel_size)/self.pixel_size).astype(int)
-            J = sp.floor((people[:,0]-self.xmin-0.5*self.pixel_size)/self.pixel_size).astype(int)
-        Vd = sp.zeros( (people.shape[0],2) )
-        Vd[:,0] = self.destinations[dest_name].desired_velocity_X[I,J]
-        Vd[:,1] = self.destinations[dest_name].desired_velocity_Y[I,J]
+            I = sp.floor((xyr[:,1]-self.ymin-0.5*self.pixel_size)/self.pixel_size).astype(int)
+            J = sp.floor((xyr[:,0]-self.xmin-0.5*self.pixel_size)/self.pixel_size).astype(int)
+        Vd = sp.zeros( (xyr.shape[0],2) )
+        for id,dest_name in enumerate(np.unique(people_dest)):
+            ind = np.where(np.array(people_dest)==dest_name)[0]
+            scale = self.destinations[dest_name].velocity_scale
+            Vd[ind,0] = xyr[ind,3]*scale*self.destinations[dest_name].desired_velocity_X[I[ind],J[ind]]
+            Vd[ind,1] = xyr[ind,3]*scale*self.destinations[dest_name].desired_velocity_Y[I[ind],J[ind]]
         return I,J,Vd
 
-    def people_target_distance(self, people, dest_name='default', I = None, J = None):
-        """
-        This function determines distances to the current target for all people
+
+    def people_target_distance(self, xyr, people_dest, I = None, J = None):
+        """This function determines distances to the current target for all people
 
         Parameters
         ----------
-        people: numpy array
-            people coordinates and radius : x,y,r
-        dest_name: string
-            name of people destination
-        I : numpy array (None by default)
-            people index i
-        J : numpy array (None by default)
-            people index j
+        xyr: numpy array
+            people coordinates and radius: ``x,y,r``
+        people_dest: list of string
+            destination for each individual
+        I: numpy array (None by default)
+            people index ``i``
+        J: numpy array (None by default)
+            people index ``j``
         Returns
         -------
-        I : numpy array
+        I: numpy array
             people index i
-        J : numpy array
+        J: numpy array
             people index j
-        D : numpy array
+        D: numpy array
             distances to the current target
         """
 
         if ((I is None) or (J is None)):
-            I = sp.floor((people[:,1]-self.ymin-0.5*self.pixel_size)/self.pixel_size).astype(int)
-            J = sp.floor((people[:,0]-self.xmin-0.5*self.pixel_size)/self.pixel_size).astype(int)
-        D = self.destinations[dest_name].distance[I,J]-people[:,2]
+            I = sp.floor((xyr[:,1]-self.ymin-0.5*self.pixel_size)/self.pixel_size).astype(int)
+            J = sp.floor((xyr[:,0]-self.xmin-0.5*self.pixel_size)/self.pixel_size).astype(int)
+        D = np.zeros(xyr.shape[0])
+        for id,dest_name in enumerate(np.unique(people_dest)):
+            ind = np.where(np.array(people_dest)==dest_name)[0]
+            D[ind] = self.destinations[dest_name].distance[I[ind],J[ind]]-xyr[ind,2]
         return I,J,D
 
 
-    def people_wall_distance(self, people, I = None, J = None):
-        """
-        This function determines distances to the nearest wall for all people
+    def people_wall_distance(self, xyr, I = None, J = None):
+        """This function determines distances to the nearest wall for all people
 
         Parameters
         ----------
-        people: numpy array
-            people coordinates and radius : x,y,r
-        I : numpy array (None by default)
-            people index i
-        J : numpy array (None by default)
-            people index j
+        xyr: numpy array
+            people coordinates and radius: ``x,y,r``
+        I: numpy array (None by default)
+            people index ``i``
+        J: numpy array (None by default)
+            people index ``j``
 
         Returns
         -------
-        I : numpy array
-            people index i
-        J : numpy array
-            people index j
-        D : numpy array
+        I: numpy array
+            people index ``i``
+        J: numpy array
+            people index ``j``
+        D: numpy array
             distances to the nearest wall
         """
         if ((I is None) or (J is None)):
-            I = sp.floor((people[:,1]-self.ymin-0.5*self.pixel_size)/self.pixel_size).astype(int)
-            J = sp.floor((people[:,0]-self.xmin-0.5*self.pixel_size)/self.pixel_size).astype(int)
-        D = self.wall_distance[I,J]-people[:,2]
+            I = sp.floor((xyr[:,1]-self.ymin-0.5*self.pixel_size)/self.pixel_size).astype(int)
+            J = sp.floor((xyr[:,0]-self.xmin-0.5*self.pixel_size)/self.pixel_size).astype(int)
+        D = self.wall_distance[I,J]-xyr[:,2]
         return I,J,D
 
-    def people_update_destination(self, people, people_destination, people_domain_id, dest_name='default'):
 
-        I = sp.floor((people[:,1]-self.ymin-0.5*self.pixel_size)/self.pixel_size).astype(int)
-        J = sp.floor((people[:,0]-self.xmin-0.5*self.pixel_size)/self.pixel_size).astype(int)
-        D = self.destinations[dest_name].distance[I,J]-people[:,2]
-        ind = sp.where(D<=-0.01)[0]
-        #print(self.name," : dest = ",dest_name," change destination for ind = ",ind)
-        if (ind.shape[0]>0) and (self.destinations[dest_name].next_domain_id is not None):
-            people_destination[ind] = self.destinations[dest_name].next_destination
-            people_domain_id[ind] = self.destinations[dest_name].next_domain_id
-        return people,people_destination,people_domain_id
-
-
-    def plot(self,id=1,dpi=150):
-        """
-        To plot the computational domain
+    def plot(self, id=1, title="", savefig=False, filename='fig.png', dpi = 150):
+        """To plot the computational domain
 
         Parameters
         ----------
 
-        id : integer
+        id: integer
             Figure id (number)
-        dpi : integer
-            Figure resolution
+        title: string
+            Figure title
+        savefig: boolean
+            writes the figure as a png file if true
+        filename: string
+            png filename used to write the figure
+        dpi: integer
+            number of pixel per inch for the saved figure
         """
         fig = plt.figure(id)
         ax1 = fig.add_subplot(111)
@@ -677,25 +661,31 @@ class Domain():
         # ax1.axes.get_xaxis().set_visible(False)
         # ax1.axes.get_xaxis().set_visible(False)
         ax1.set_axis_off()
+        ax1.set_title(title)
         #fig.add_axes(ax1)
         plt.draw()
+        if (savefig):
+            fig.savefig(filename,dpi=dpi,bbox_inches='tight',pad_inches=0)
+
 
     def plot_wall_dist(self,
-                       step=10,
-                       scale=10,
-                       scale_units='inches',
-                       id=1,
-                       dpi=150):
-        """
-        To plot the wall distances
+            step=10, scale=10, scale_units='inches', id=1, title="",
+            savefig=False, filename='fig.png', dpi = 150):
+        """To plot the wall distances
 
         Parameters
         ----------
 
-        id : integer
+        id: integer
             Figure id (number)
-        dpi : integer
-            Figure resolution
+        title: string
+            Figure title
+        savefig: boolean
+            writes the figure as a png file if true
+        filename: string
+            png filename used to write the figure
+        dpi: integer
+            number of pixel per inch for the saved figure
         """
         fig = plt.figure(id)
         ax1 = fig.add_subplot(111)
@@ -704,38 +694,43 @@ class Domain():
         ax1.imshow(self.wall_distance,interpolation='nearest',
                    extent=[self.xmin,self.xmax,self.ymin,self.ymax],alpha=0.7,
                    origin='lower')
-        ax1.quiver(self.X[::step, ::step],self.Y[::step, ::step],
-                   self.wall_grad_X[::step, ::step],
-                   self.wall_grad_Y[::step, ::step],
+        ax1.quiver(self.X[::step,::step],self.Y[::step,::step],
+                   self.wall_grad_X[::step,::step],
+                   self.wall_grad_Y[::step,::step],
                    scale=scale, scale_units=scale_units)
         ax1.set_axis_off()
+        ax1.set_title(title)
         #plt.savefig('.png',dpi=dpi)
         plt.draw()
+        if (savefig):
+            fig.savefig(filename,dpi=dpi,bbox_inches='tight',pad_inches=0)
+
 
     def plot_desired_velocity(self,
-                              destination_name,
-                              step=10,
-                              scale=10,
-                              scale_units='inches',
-                              id=1,
-                              dpi=150):
-        """
-        To plot the desired velocity
+            destination_name, step=10, scale=10, scale_units='inches', id=1,
+            title="", savefig=False, filename='fig.png', dpi = 150):
+        """To plot the desired velocity
 
         Parameters
         ----------
-        destination_name : string
+        destination_name: string
             name of the considered destination
-        step : integer
+        step: integer
             draw an arrow every step pixels
-        scale : integer
+        scale: integer
             scaling for the quiver arrows
-        scale_units : string
+        scale_units: string
             unit name for quiver arrow scaling
-        id : integer
+        id: integer
             Figure id (number)
-        dpi : integer
-            Figure resolution
+        title: string
+            Figure title
+        savefig: boolean
+            writes the figure as a png file if true
+        filename: string
+            png filename used to write the figure
+        dpi: integer
+            number of pixel per inch for the saved figure
         """
         fig = plt.figure(id)
         ax1 = fig.add_subplot(111)
@@ -744,24 +739,26 @@ class Domain():
         ax1.imshow(self.destinations[destination_name].distance,interpolation='nearest',
                    extent=[self.xmin,self.xmax,self.ymin,self.ymax],alpha=0.7,
                    origin='lower')
-        ax1.quiver(self.X[::step, ::step],self.Y[::step, ::step],
-                   self.destinations[destination_name].desired_velocity_X[::step, ::step],
-                   self.destinations[destination_name].desired_velocity_Y[::step, ::step],
+        ax1.quiver(self.X[::step,::step],self.Y[::step,::step],
+                   self.destinations[destination_name].desired_velocity_X[::step,::step],
+                   self.destinations[destination_name].desired_velocity_Y[::step,::step],
                    scale=scale, scale_units=scale_units)
+        ax1.set_title(title)
         #plt.savefig('.png',dpi=dpi)
         ax1.set_axis_off()
         plt.draw()
+        if (savefig):
+            fig.savefig(filename,dpi=dpi,bbox_inches='tight',pad_inches=0)
+
 
     def __str__(self):
+        """To print the main caracteristics of a Domain object
         """
-        To print the main caracteristics of a Domain object
-        """
-        return "--> "+self.name+  \
-        " :\n    dimensions : ["+str(self.xmin)+","+str(self.xmax)+"]x["+ \
-                               str(self.ymin)+","+str(self.ymax)+"]"+ \
-        "\n    width : "+str(self.width)+" height : "+str(self.height)+ \
-        "\n    background image : "+str(self.__background)+ \
-        "\n    image of the domain : "+str(self.__image_filename)+ \
-        "\n    walls : "+str(self.__wall_shapes)+ \
-        "\n    doors : "+str(self.__door_shapes)+ \
-        "\n    destinations : "+str(self.destinations)
+        return "--> "+self.name  \
+        + ":\n    dimensions: ["+str(self.xmin)+","+str(self.xmax)+"]x[" \
+        + str(self.ymin)+","+str(self.ymax)+"]" \
+        + "\n    width: "+str(self.width)+" height: "+str(self.height) \
+        + "\n    background image: "+str(self.__background) \
+        + "\n    image of the domain: "+str(self.__image_filename) \
+        + "\n    wall_colors: "+str(self.wall_colors) \
+        + "\n    destinations: "+str(self.destinations)

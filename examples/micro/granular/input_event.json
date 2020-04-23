@@ -1,0 +1,90 @@
+{
+  "domains":[
+    {
+      "name":"event",
+      "background":"event.png",
+      "px":0.02,
+      "width":null,
+      "height":null,
+      "wall_colors":[ [0,0,0] ],
+      "shape_lines":[
+        {
+          "xx": [18.15,19.56],
+          "yy": [35.4,35.4],
+          "linewidth": 8,
+          "outline_color": [255,0,0],
+          "fill_color": [255,0,0]
+        }
+      ],
+      "shape_circles":[
+      ],
+      "shape_ellipses":[
+      ],
+      "shape_rectangles":[
+      ],
+      "shape_polygons":[
+      ],
+      "destinations":[
+        {
+          "name": "door",
+          "colors": [ [255,0,0] ],
+          "excluded_colors":[ [0,0,0] ],
+          "desired_velocity_from_color":[],
+          "velocity_scale": 1,
+          "next_destination": null,
+          "next_domain": null,
+          "next_transit_box":null
+        }
+      ]
+    }
+  ],
+  "people_init":[
+    {
+      "domain": "event",
+      "groups": [
+        {
+          "nb": 100,
+          "radius_distribution": ["uniform",0.14,0.16],
+          "velocity_distribution": ["normal",1.4,0.4],
+          "box": [20.1,31.06,0.1,15.28],
+          "destination": "door"
+        },
+        {
+          "nb": 100,
+          "radius_distribution": ["uniform",0.14,0.16],
+          "velocity_distribution": ["normal",1.4,0.4],
+          "box": [0.1,11.06,0.1,15.28],
+          "destination": "door"
+        }
+      ]
+    }
+  ],
+  "sensors":[
+    {
+      "name": "sensor1",
+      "domain": "event",
+      "line": [21.18,16.53,18.59,15.62]
+    },
+    {
+      "name": "sensor2",
+      "domain": "event",
+      "line": [13.28,20.88,11.32,21.94]
+    }
+  ],
+  "prefix":"results/",
+  "seed":40,
+  "with_graphes": true,
+  "Tf":50.0,
+  "dt":0.01,
+  "drawper":100,
+  "projection_method": "cvxopt",
+  "dmax":0.01,
+  "dmin_people":0.0,
+  "dmin_walls":0.0,
+  "plot_people":true,
+  "plot_contacts":false,
+  "plot_desired_velocities":false,
+  "plot_velocities":false,
+  "plot_paths":false,
+  "plot_sensors":true
+}
