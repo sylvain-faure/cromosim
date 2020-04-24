@@ -52,8 +52,6 @@ and can be launched with
         <center>
           <video style="display:block; margin: 0 auto;" controls poster="_static/micro_social_room_paths.png" width="40%" height="auto">
             <source src="_static/micro_social_room_paths.mp4" />
-            <source src="_static/micro_social_room_paths.webmhd.webm" />
-            <source src="_static/micro_social_room_paths.oggtheora.ogv" />
           </video>
         </center>
       </td>
@@ -73,8 +71,6 @@ and can be launched with
         <center>
           <video style="display:block; margin: 0 auto;" controls poster="_static/micro_social_stadium.png" width="40%" height="auto">
             <source src="_static/micro_social_stadium.mp4" />
-            <source src="_static/micro_social_stadium.webmhd.webm" />
-            <source src="_static/micro_social_stadium.oggtheora.ogv" />
           </video>
         </center>
       </td>
@@ -99,8 +95,6 @@ and can be launched with
         <center>
           <video style="display:block; margin: 0 auto;" controls poster="_static/micro_social_event.png" width="40%" height="auto">
             <source src="_static/micro_social_event.mp4" />
-            <source src="_static/micro_social_event.webmhd.webm" />
-            <source src="_static/micro_social_event.oggtheora.ogv" />
           </video>
         </center>
       </td>
@@ -125,8 +119,6 @@ and can be launched with
         <center>
           <video style="display:block; margin: 0 auto;" controls poster="_static/micro_social_shibuya_crossing.png" width="40%" height="auto">
             <source src="_static/micro_social_shibuya_crossing.mp4" />
-            <source src="_static/micro_social_shibuya_crossing.webmhd.webm" />
-            <source src="_static/micro_social_shibuya_crossing.oggtheora.ogv" />
           </video>
         </center>
       </td>
@@ -147,8 +139,6 @@ and can be launched with
         <center>
           <video style="display:block; margin: 0 auto;" controls poster="_static/micro_social_stairs_0_1.png" width="100%" height="auto">
             <source src="_static/micro_social_stairs_0_1.mp4" />
-            <source src="_static/micro_social_stairs_0_1.webmhd.webm" />
-            <source src="_static/micro_social_stairs_0_1.oggtheora.ogv" />
           </video>
         </center>
       </td>
@@ -207,8 +197,6 @@ and can be launched with
         <center>
           <video style="display:block; margin: 0 auto;" controls poster="_static/micro_granular_room_paths.png" width="40%" height="auto">
             <source src="_static/micro_granular_room_paths.mp4" />
-            <source src="_static/micro_granular_room_paths.webmhd.webm" />
-            <source src="_static/micro_granular_room_paths.oggtheora.ogv" />
           </video>
         </center>
       </td>
@@ -228,8 +216,6 @@ and can be launched with
         <center>
           <video style="display:block; margin: 0 auto;" controls poster="_static/micro_granular_stadium.png" width="40%" height="auto">
             <source src="_static/micro_granular_stadium.mp4" />
-            <source src="_static/micro_granular_stadium.webmhd.webm" />
-            <source src="_static/micro_granular_stadium.oggtheora.ogv" />
           </video>
         </center>
       </td>
@@ -254,8 +240,6 @@ and can be launched with
         <center>
           <video style="display:block; margin: 0 auto;" controls poster="_static/micro_granular_event.png" width="40%" height="auto">
             <source src="_static/micro_granular_event.mp4" />
-            <source src="_static/micro_granular_event.webmhd.webm" />
-            <source src="_static/micro_granular_event.oggtheora.ogv" />
           </video>
         </center>
       </td>
@@ -280,8 +264,6 @@ and can be launched with
         <center>
           <video style="display:block; margin: 0 auto;" controls poster="_static/micro_granular_shibuya_crossing.png" width="40%" height="auto">
             <source src="_static/micro_granular_shibuya_crossing.mp4" />
-            <source src="_static/micro_granular_shibuya_crossing.webmhd.webm" />
-            <source src="_static/micro_granular_shibuya_crossing.oggtheora.ogv" />
           </video>
         </center>
       </td>
@@ -302,8 +284,6 @@ and can be launched with
         <center>
           <video style="display:block; margin: 0 auto;" controls poster="_static/micro_granular_stairs_0_1.png" width="100%" height="auto">
             <source src="_static/micro_granular_stairs_0_1.mp4" />
-            <source src="_static/micro_granular_stairs_0_1.webmhd.webm" />
-            <source src="_static/micro_granular_stairs_0_1.oggtheora.ogv" />
           </video>
         </center>
       </td>

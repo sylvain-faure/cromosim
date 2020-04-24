@@ -1,4 +1,5 @@
 from setuptools import setup, find_packages
+import os
 
 CLASSIFIERS = [
     "Development Status :: 5 - Production/Stable",
@@ -19,7 +20,7 @@ CLASSIFIERS = [
 
 MAJOR = "2"
 MINOR = "0"
-PATCH = "0"
+PATCH = "2"
 VERSION = "{0}.{1}.{2}".format(MAJOR, MINOR, PATCH)
 
 def write_version_py(filename='cromosim/version.py'):
@@ -29,16 +30,24 @@ def write_version_py(filename='cromosim/version.py'):
     finally:
         a.close()
 
-README = open("README.rst").readlines()
+# read the contents of your README file
+from os import path
+this_directory = path.abspath(path.dirname(__file__))
+with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
+    long_description = f.read()
+
+#README = open("README.rst").readlines()
 
 write_version_py()
 
 setup(
     name           = "cromosim",
     version        = VERSION,
-    description    = README[0],
-    long_description_content_type = 'text/x-rst',
-    long_description = "".join(README[1:]),
+    #description    = README[0],
+    #long_description_content_type = 'text/x-rst',
+    #long_description = "".join(README[1:]),
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     author         = "Sylvain Faure, Bertrand Maury",
     author_email   = "sylvain.faure@math.u-psud.fr, bertrand.maury@math.u-psud.fr",
     url            = "http://www.cromosim.fr",

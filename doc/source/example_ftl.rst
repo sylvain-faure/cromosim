@@ -40,8 +40,6 @@ Results:
    <br>
    <video style="display:block; margin: 0 auto;" controls poster="_static/ftl_order1.png" width="60%" height="auto">
       <source src="_static/ftl_order1.mp4" />
-      <source src="_static/ftl_order1.webm" />
-      <source src="_static/ftl_order1.theora.ogv" />
    </video>
    <br>
 
@@ -59,8 +57,6 @@ Results:
    <br>
    <video style="display:block; margin: 0 auto;" controls poster="_static/ftl_order1_periodic.png" width="60%" height="auto">
       <source src="_static/ftl_order1_periodic.mp4" />
-      <source src="_static/ftl_order1_periodic.webm" />
-      <source src="_static/ftl_order1_periodic.theora.ogv" />
    </video>
    <br>
 
@@ -79,8 +75,6 @@ Results:
       <br>
       <video style="display:block; margin: 0 auto;" controls poster="_static/ftl_order2.png" width="60%" height="auto">
          <source src="_static/ftl_order2.mp4" />
-         <source src="_static/ftl_order2.webm" />
-         <source src="_static/ftl_order2.theora.ogv" />
       </video>
       <br>
 
@@ -98,8 +92,6 @@ Results:
       <br>
       <video style="display:block; margin: 0 auto;" controls poster="_static/ftl_order2_periodic.png" width="60%" height="auto">
          <source src="_static/ftl_order2_periodic.mp4" />
-         <source src="_static/ftl_order2_periodic.webm" />
-         <source src="_static/ftl_order2_periodic.theora.ogv" />
       </video>
       <br>
 

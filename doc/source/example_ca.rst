@@ -31,8 +31,6 @@ Results:
    <br>
    <video style="display:block; margin: 0 auto;" controls poster="_static/cellular_automata.png" width="50%" height="auto">
       <source src="_static/cellular_automata.mp4" />
-      <source src="_static/cellular_automata.webm" />
-      <source src="_static/cellular_automata.theora.ogv" />
    </video>
    <br>
    <div align=center>

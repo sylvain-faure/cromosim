@@ -30,8 +30,6 @@ Results:
    <br>
    <video style="display:block; margin: 0 auto;" controls poster="_static/compartments.png" width="50%" height="auto">
       <source src="_static/compartments.mp4" />
-      <source src="_static/compartments.webm" />
-      <source src="_static/compartments.theora.ogv" />
    </video>
    <br>
    <div align=center>
