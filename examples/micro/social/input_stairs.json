@@ -167,14 +167,14 @@
       "domain": "floor1",
       "groups": [
         {
-          "nb": 10,
+          "nb": 30,
           "radius_distribution": ["uniform",0.14,0.16],
           "velocity_distribution": ["normal",1.4,0.4],
           "box": [0.15,21.5,0.2,9.1],
           "destination": "to_floor0"
         },
         {
-          "nb": 10,
+          "nb": 30,
           "radius_distribution": ["uniform",0.14,0.16],
           "velocity_distribution": ["normal",0.5,0.2],
           "box": [0.15,21.5,0.2,9.1],
@@ -222,9 +222,9 @@
   "prefix":"results/",
   "seed":40,
   "with_graphes": true,
-  "Tf":20.0,
+  "Tf":2000.0,
   "dt":0.005,
-  "drawper":100,
+  "drawper":200,
   "mass":80.0,
   "tau":0.5,
   "F":2000.0,
