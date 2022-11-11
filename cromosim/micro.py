@@ -874,7 +874,7 @@ def people_initialization(dom, groups, dt, dmin_people=0, dmin_walls=0,
     ## To initialize people positions
     rng = np.random.RandomState()
     if (seed>0):
-        rng = sp.random.RandomState(seed)
+        rng = np.random.RandomState(seed)
     if (verbose):
         print("=================> INITIALIZATION: SEED = ",rng.get_state()[1][0])
     ## People properties: radius, velocity coefficient and initial random coordinates
