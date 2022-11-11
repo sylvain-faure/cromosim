@@ -507,7 +507,7 @@ class Domain():
             phi = sp.ones(self.image_red.shape)
             phi[mask_id] = 0
 
-            phi = sp.ma.MaskedArray(phi, mask=excluded_color_mask)
+            phi = np.ma.MaskedArray(phi, mask=excluded_color_mask)
             dest.distance = skfmm.travel_time(phi, dest.fmm_speed, dx=self.pixel_size)
             #dest.distance = skfmm.distance(phi, dx=self.pixel_size)
             if (excluded_color_id[0].size>0):
