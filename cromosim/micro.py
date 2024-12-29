@@ -1100,7 +1100,7 @@ def people_update_destination(all_people, domains, thld, box=None):
         if (out.shape[0]>0):
             for ik,key in enumerate(all_people[name]):
                 print(ik,key)
-                if (key is not "paths"):
+                if (key != "paths"):
                     try:
                         if (all_people[name][key].shape[0]==p.shape[0]):
                             all_people[name][key] = \
