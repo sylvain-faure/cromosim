@@ -14,17 +14,18 @@ This package proposes Python implementations of the numerical methods detailed i
 How to use cromosim ?
 ---------------------
 
-You can either install the main modules with pip:
+You can either install the main modules with pip
 
     ~$ pip install cromosim
 
-and then download one of the examples:
+and then manually download the files for one of the examples you're interested in, such as
 
-    ~$ mkdir my_first_example
-    ~$ cd my_first_example
-    my_first_example$ wget https://github.com/sylvain-faure/cromosim/blob/master/examples/domain/domain_room.py
-    my_first_example$ wget https://github.com/sylvain-faure/cromosim/blob/master/examples/domain/room.png
-    my_first_example$ python domain_room.py
+    https://github.com/sylvain-faure/cromosim/blob/master/examples/domain/domain_room.py
+    https://github.com/sylvain-faure/cromosim/blob/master/examples/domain/room.png
+
+and finally, once you've retrieved the files, you can run the script: 
+
+    ~$ python domain_room.py
 
 Or clone the entire folder with git and install it manually:
 
