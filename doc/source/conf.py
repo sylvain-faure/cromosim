@@ -32,11 +32,11 @@
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = ['sphinx.ext.mathjax',
-    'sphinx.ext.viewcode',
-    'sphinx.ext.githubpages',
-    'sphinx.ext.autodoc',
-    'sphinx.ext.autosummary',
-    'numpydoc']
+              'sphinx.ext.viewcode',
+              'sphinx.ext.githubpages',
+              'sphinx.ext.autodoc',
+              'sphinx.ext.autosummary',
+              'numpydoc']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -69,7 +69,7 @@ release = ''
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = 'en'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -88,16 +88,16 @@ todo_include_todos = False
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'scrolls' # haiku alabaster bizstyle pyramid nature traditional agogo scrolls sphinxdoc classic
+html_theme = 'scrolls'  # haiku alabaster bizstyle pyramid nature traditional agogo scrolls sphinxdoc classic
 
-## build/html/_static/scrolls.css
+# build/html/_static/scrolls.css
 
-#scrolls – A more lightweight theme, based on the Jinja documentation. The following color options are available:
-#headerbordercolor
-#subheadlinecolor
-##linkcolor
-#visitedlinkcolor
-#admonitioncolor
+# scrolls – A more lightweight theme, based on the Jinja documentation. The following color options are available:
+# headerbordercolor
+# subheadlinecolor
+# linkcolor
+# visitedlinkcolor
+# admonitioncolor
 
 
 # Theme options are theme-specific and customize the look and feel of a theme
@@ -184,8 +184,6 @@ texinfo_documents = [
      author, 'cromosim', 'One line description of project.',
      'Miscellaneous'),
 ]
-
-
 
 # -- Options for Epub output ----------------------------------------------
 

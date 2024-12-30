@@ -7,27 +7,34 @@
 #
 # License: GPL
 
-import sys, os
-from cromosim import *
-from cromosim.comp import *
-from optparse import OptionParser
+import sys
+import os
 import json
+from optparse import OptionParser
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.patches import Circle, Ellipse, Rectangle, Polygon
+from matplotlib.lines import Line2D
+
+from cromosim.domain import Domain
+from cromosim.domain import Destination
+from cromosim.comp import plot_compt, iteration
 
 """
     python compartments.py --json input.json
 """
 
-parser = OptionParser(usage="usage: %prog [options] filename",version="%prog 1.0")
-parser.add_option('--json',dest="jsonfilename",default="input.json",type="string",
-                  action="store",help="Input json filename")
+parser = OptionParser(usage="usage: %prog [options] filename", version="%prog 1.0")
+parser.add_option('--json', dest="jsonfilename", default="input.json", type="string",
+                  action="store", help="Input json filename")
 opt, remainder = parser.parse_args()
-print("===> JSON filename = ",opt.jsonfilename)
+print("===> JSON filename = ", opt.jsonfilename)
 with open(opt.jsonfilename) as json_file:
     try:
         input = json.load(json_file)
     except json.JSONDecodeError as msg:
         print(msg)
-        print("Failed to load json file ",opt.jsonfilename)
+        print("Failed to load json file ", opt.jsonfilename)
         print("Check its content (https://fr.wikipedia.org/wiki/JavaScript_Object_Notation)")
         sys.exit()
 
@@ -142,7 +149,7 @@ with open(opt.jsonfilename) as json_file:
 """
 
 jdom = input["domain"]
-print("===> JSON data used to build the domain : ",jdom)
+print("===> JSON data used to build the domain : ", jdom)
 prefix = input["prefix"]
 if not os.path.exists(prefix):
     os.makedirs(prefix)
@@ -158,150 +165,151 @@ RoomCenters = np.array(input["RoomCenters"])
 CircAngles = np.array(input["CircAngles"])
 DoorRoomCapacity = input["DoorRoomCapacity"]
 Nsecondes = input["Nsecondes"]
-print("===> Number of persons per rooms : ",Np_rooms)
+print("===> Number of persons per rooms : ", Np_rooms)
 Np = 0
 for n in Np_rooms:
     Np += n
-print("===> Number of persons : ",Np)
+print("===> Number of persons : ", Np)
 Nrooms = len(RoomNames)
-print("===> Number of rooms : ",Nrooms)
-print("===> Capacity of each exit door : ",DoorRoomCapacity)
+print("===> Number of rooms : ", Nrooms)
+print("===> Capacity of each exit door : ", DoorRoomCapacity)
 
 """
     Build the Domain objects
 """
 jname = jdom["name"]
-print("===> Build domain ",jname)
+print("===> Build domain ", jname)
 jbg = jdom["background"]
 jpx = jdom["px"]
 jwidth = jdom["width"]
 jheight = jdom["height"]
 jwall_colors = jdom["wall_colors"]
-if (jbg==""):
+if (jbg == ""):
     dom = Domain(name=jname, pixel_size=jpx, width=jwidth, height=jheight,
                  wall_colors=jwall_colors)
 else:
     dom = Domain(name=jname, background=jbg, pixel_size=jpx,
                  wall_colors=jwall_colors)
-## To add lines : Line2D(xdata, ydata, linewidth)
+# To add lines : Line2D(xdata, ydata, linewidth)
 for sl in jdom["shape_lines"]:
-    line = Line2D(sl["xx"],sl["yy"],linewidth=sl["linewidth"])
-    dom.add_shape(line,outline_color=sl["outline_color"],
+    line = Line2D(sl["xx"], sl["yy"], linewidth=sl["linewidth"])
+    dom.add_shape(line, outline_color=sl["outline_color"],
                   fill_color=sl["fill_color"])
-## To add circles : Circle( (center_x,center_y), radius )
+# To add circles : Circle( (center_x,center_y), radius )
 for sc in jdom["shape_circles"]:
-    circle = Circle( (sc["center_x"], sc["center_y"]), sc["radius"] )
-    dom.add_shape(circle,outline_color=sc["outline_color"],
+    circle = Circle((sc["center_x"], sc["center_y"]), sc["radius"])
+    dom.add_shape(circle, outline_color=sc["outline_color"],
                   fill_color=sc["fill_color"])
-## To add ellipses : Ellipse( (center_x,center_y), width, height,
-##                            angle_in_degrees_anti-clockwise )
+# To add ellipses : Ellipse( (center_x,center_y), width, height,
+#                            angle_in_degrees_anti-clockwise )
 for se in jdom["shape_ellipses"]:
-    ellipse = Ellipse( (se["center_x"], se["center_y"]),
-                        se["width"], se["height"],
-                        se["angle_in_degrees_anti-clockwise"])
-    dom.add_shape(ellipse,outline_color=se["outline_color"],
+    ellipse = Ellipse((se["center_x"], se["center_y"]),
+                      se["width"], se["height"],
+                      se["angle_in_degrees_anti-clockwise"])
+    dom.add_shape(ellipse, outline_color=se["outline_color"],
                   fill_color=se["fill_color"])
-## To add rectangles : Rectangle( (bottom_left_x,bottom_left_y), width, height,
-##                                 angle_in_degrees_anti-clockwise )
+# To add rectangles : Rectangle( (bottom_left_x,bottom_left_y), width, height,
+#                                 angle_in_degrees_anti-clockwise )
 for sr in jdom["shape_rectangles"]:
-    rectangle = Rectangle( (sr["bottom_left_x"],sr["bottom_left_y"]),
-                           sr["width"], sr["height"],
-                           sr["angle_in_degrees_anti-clockwise"])
-    dom.add_shape(rectangle,outline_color=sr["outline_color"],
+    rectangle = Rectangle((sr["bottom_left_x"], sr["bottom_left_y"]),
+                          sr["width"], sr["height"],
+                          sr["angle_in_degrees_anti-clockwise"])
+    dom.add_shape(rectangle, outline_color=sr["outline_color"],
                   fill_color=sr["fill_color"])
-## To add polygons : Polygon( [[x0,y0],[x1,y1],...] )
+# To add polygons : Polygon( [[x0,y0],[x1,y1],...] )
 for spo in jdom["shape_polygons"]:
     polygon = Polygon(spo["xy"])
-    dom.add_shape(polygon,outline_color=spo["outline_color"],
+    dom.add_shape(polygon, outline_color=spo["outline_color"],
                   fill_color=spo["fill_color"])
-## To build the domain : background + shapes
+# To build the domain : background + shapes
 dom.build_domain()
-## To add all the available destinations
-for j,dd in enumerate(jdom["destinations"]):
-    desired_velocity_from_color=[]
+# To add all the available destinations
+for j, dd in enumerate(jdom["destinations"]):
+    desired_velocity_from_color = []
     for gg in dd["desired_velocity_from_color"]:
         desired_velocity_from_color.append(
-            np.concatenate((gg["color"],gg["desired_velocity"])))
-    dest = Destination(name=dd["name"],colors=dd["colors"],
-    excluded_colors=dd["excluded_colors"],
-    desired_velocity_from_color=desired_velocity_from_color,
-    velocity_scale=dd["velocity_scale"],
-    next_destination=dd["next_destination"],
-    next_domain=dd["next_domain"],
-    next_transit_box=dd["next_transit_box"])
-    print("===> Destination : ",dest)
+            np.concatenate((gg["color"], gg["desired_velocity"])))
+    dest = Destination(name=dd["name"], colors=dd["colors"],
+                       excluded_colors=dd["excluded_colors"],
+                       desired_velocity_from_color=desired_velocity_from_color,
+                       velocity_scale=dd["velocity_scale"],
+                       next_destination=dd["next_destination"],
+                       next_domain=dd["next_domain"],
+                       next_transit_box=dd["next_transit_box"])
+    print("===> Destination : ", dest)
     dom.add_destination(dest)
 
-    dom.plot_desired_velocity(dd["name"],id=10+j,step=20)
+    dom.plot_desired_velocity(dd["name"], id=10+j, step=20)
 
-print("===> Domain : ",dom)
+print("===> Domain : ", dom)
 
 dom.plot(id=0)
-dom.plot_wall_dist(id=1,step=20)
+dom.plot_wall_dist(id=1, step=20)
 
 
-## Maximal number of inlets for a room
+# Maximal number of inlets for a room
 NiorMax = 0
-## Number of inlets for each room
+# Number of inlets for each room
 Nior = []
 for ri in RoomInlets:
-    NiorMax = max(NiorMax,len(ri))
+    NiorMax = max(NiorMax, len(ri))
     Nior.append(len(ri))
-print("===> Maximal number of inlets for a room : ",NiorMax)
-print("===> Number of inlets for each room : ",Nior)
+print("===> Maximal number of inlets for a room : ", NiorMax)
+print("===> Number of inlets for each room : ", Nior)
 
-## Room numbers associate to the inlets for each room
-List_iOr = np.zeros([Nrooms,NiorMax],dtype=int)
-for i,ri in enumerate(RoomInlets):
-    List_iOr[i,:len(ri)] = ri
-#print("===> Room numbers associate to the inlets for each room",List_iOr)
+# Room numbers associate to the inlets for each room
+List_iOr = np.zeros([Nrooms, NiorMax], dtype=int)
+for i, ri in enumerate(RoomInlets):
+    List_iOr[i, :len(ri)] = ri
+# print("===> Room numbers associate to the inlets for each room",List_iOr)
 
-## Compute travel times :
-T_iOr = np.zeros([Nrooms,NiorMax],dtype=int)
+# Compute travel times :
+T_iOr = np.zeros([Nrooms, NiorMax], dtype=int)
 for ir in np.arange(Nrooms):
     for i in np.arange(Nior[ir]):
-        jr = List_iOr[ir,i]
-        ij_exit = np.rint(DoorCenters[ir,:2]/dom.pixel_size).astype(int)
-        ij_entrance = np.rint(DoorCenters[jr,:2]/dom.pixel_size).astype(int)
-        T_iOr[ir,i] = np.ceil( \
-                      dom.destinations["door"].distance.data[ij_entrance[1],ij_entrance[0]] - \
-                      dom.destinations["door"].distance.data[ij_exit[1],ij_exit[0]] )
-        T_iOr[ir,i] = TravelTimeWeights[ir][i]*T_iOr[ir,i]
-print("Travel times : ",T_iOr)
+        jr = List_iOr[ir, i]
+        ij_exit = np.rint(DoorCenters[ir, :2]/dom.pixel_size).astype(int)
+        ij_entrance = np.rint(DoorCenters[jr, :2]/dom.pixel_size).astype(int)
+        T_iOr[ir, i] = np.ceil(
+            dom.destinations["door"].distance.data[ij_entrance[1], ij_entrance[0]] -
+            dom.destinations["door"].distance.data[ij_exit[1], ij_exit[0]])
+        T_iOr[ir, i] = TravelTimeWeights[ir][i]*T_iOr[ir, i]
+print("Travel times : ", T_iOr)
 
-NPrir = np.zeros([Nrooms,NiorMax])
+NPrir = np.zeros([Nrooms, NiorMax])
 
-## Number of persons for each room
-NPir = np.zeros([Nsecondes , Nrooms])
-NPir[0,:] = Np_rooms
+# Number of persons for each room
+NPir = np.zeros([Nsecondes, Nrooms])
+NPir[0, :] = Np_rooms
 
-## Number of persons who's waiting to leave each room
-NPwir = np.zeros([Nsecondes , Nrooms])
-NPwir[0,:]=NPir[0,:]
+# Number of persons who's waiting to leave each room
+NPwir = np.zeros([Nsecondes, Nrooms])
+NPwir[0, :] = NPir[0, :]
 
-## Nrooms of persons upstream the exit
-Flux = np.zeros([Nsecondes , Nrooms])
+# Nrooms of persons upstream the exit
+Flux = np.zeros([Nsecondes, Nrooms])
 
-print("--> NPir at t=0 : ",NPir[0,:].sum())
+print("--> NPir at t=0 : ", NPir[0, :].sum())
 
-it=0
-plot_compt(5, RoomNames, RoomCenters, DoorCenters, CircAngles, NPir[it,:],
-           NPrir, NPwir[it,:], Nior, List_iOr, dom, area, savefig=True,
+it = 0
+plot_compt(5, RoomNames, RoomCenters, DoorCenters, CircAngles, NPir[it, :],
+           NPrir, NPwir[it, :], Nior, List_iOr, dom, area, savefig=True,
            filename=prefix+"fig_"+str(it).zfill(6)+".png",
            title='time = '+str(it)+' s')
 
-for it in np.arange(1,Nsecondes):
+for it in np.arange(1, Nsecondes):
 
-    Flux,NPir,NPwir,NPrir = iteration(it, Nrooms, DoorRoomCapacity, NPir, NPrir,
-                                      NPwir, Nior, List_iOr, T_iOr, Flux)
-    print("---------> it = ",it)
-    #print("--> Flux : ",Flux)
-    print("--> NPir : ",NPir[it,:])
-    #print("--> NPwir : ",NPwir[it,:])
-    #print("--> NPrir : ",NPrir)
-    plot_compt(5, RoomNames, RoomCenters, DoorCenters, CircAngles, NPir[it,:],
-               NPrir, NPwir[it,:], Nior, List_iOr, dom, area, savefig=True,
+    Flux, NPir, NPwir, NPrir = iteration(it, Nrooms, DoorRoomCapacity, NPir, NPrir,
+                                         NPwir, Nior, List_iOr, T_iOr, Flux)
+    print("---------> it = ", it)
+    # print("--> Flux : ", Flux)
+    print("--> NPir : ", NPir[it, :])
+    # print("--> NPwir : ",NPwir[it, :])
+    # print("--> NPrir : ",NPrir)
+    plot_compt(5, RoomNames, RoomCenters, DoorCenters, CircAngles, NPir[it, :],
+               NPrir, NPwir[it, :], Nior, List_iOr, dom, area, savefig=True,
                filename=prefix+"fig_"+str(it).zfill(6)+".png",
                title='time = '+str(it)+' s')
+    plt.pause(0.1)
 
 plt.show()

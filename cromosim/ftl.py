@@ -3,17 +3,12 @@
 #     Bertrand Maury <bertrand.maury@universite-paris-saclay.fr>
 # License: GPL
 import numpy as np
-import scipy as sp
-import sys
-import random
-import matplotlib
 import matplotlib.pyplot as plt
 
 from matplotlib.lines import Line2D
-from matplotlib.collections import LineCollection
 
-def update_positions_ftl_order_1(L, X, t, dt, Phi, periodicity=True,
-                                 V_leader=None):
+
+def update_positions_ftl_order_1(L, X, t, dt, Phi, periodicity=True, V_leader=None):
     """
     To update the positions according to the follow the leader model (order 1)
 
@@ -42,28 +37,28 @@ def update_positions_ftl_order_1(L, X, t, dt, Phi, periodicity=True,
         new velocities of the individuals
 
     """
-    if (periodicity == True):
+    if periodicity:
         # No leader
         S = np.argsort(X)
         W = X[S[1:]] - X[S[:-1]]
-        W = np.append(W,(X[S[0]]+L) - X[S[-1]])
+        W = np.append(W, (X[S[0]]+L) - X[S[-1]])
         V = Phi(W)
         Xnew = X[S] + dt*V
-        Xnew1 = Xnew*(Xnew<L) + (Xnew-L)*(Xnew>=L)
+        Xnew1 = Xnew*(Xnew < L) + (Xnew-L)*(Xnew >= L)
         Xnew[S] = Xnew1
-        V1 = V ; V[S] = V1
+        V1 = V
+        V[S] = V1
     else:
         # The last position in the array is the leader...
         W = X[1:]-X[:-1]
         VV = Phi(W)
         VL = V_leader(t)
-        V = np.append(VV,VL)
+        V = np.append(VV, VL)
         Xnew = X+dt*V
     return Xnew, V
 
 
-def update_positions_ftl_order_2(L, X, U, t, dt, tau, Phi, periodicity=True,
-                                 V_leader=None):
+def update_positions_ftl_order_2(L, X, U, t, dt, tau, Phi, periodicity=True, V_leader=None):
     """
     To update the positions according to the follow the leader model (order 2)
 
@@ -98,18 +93,19 @@ def update_positions_ftl_order_2(L, X, U, t, dt, tau, Phi, periodicity=True,
         new velocities of the individuals
 
     """
-    if (periodicity == True):
+    if periodicity:
         # No leader
         S = np.argsort(X)
         W = X[S[1:]]-X[S[:-1]]
-        W = np.append(W,(X[S[0]]+L)-X[S[-1]])
+        W = np.append(W, (X[S[0]]+L)-X[S[-1]])
         V = Phi(W)
         Unew = U[S]+dt*(V-U[S])/tau
         Xnew = X[S]+dt*Unew
-        Xnew1 = Xnew*(Xnew<L)+(Xnew-L)*(Xnew>=L)
+        Xnew1 = Xnew*(Xnew < L)+(Xnew-L)*(Xnew >= L)
         Xnew[S] = Xnew1
-        V1 = V ; V[S] = V1
-        Unew1 = Unew ; Unew[S] = Unew
+        V1 = V
+        V[S] = V1
+        Unew[S] = Unew
     else:
         # The last position in the array is the leader...
         Xnew = X+dt*U
@@ -152,52 +148,48 @@ def plot_people(L, X, t, data, tgrid, periodicity=True, V_leader=None,
         size of the spheres used to represent the individuals
     """
     N = X.shape[0]
-    XY = np.zeros((N,2))
-    XY[:,0] = X
-    itmax = np.where(tgrid<=t)[0].max()
+    XY = np.zeros((N, 2))
+    XY[:, 0] = X
+    itmax = np.where(tgrid <= t)[0].max()
 
-    fig = plt.figure(ifig,figsize=(16,9))
+    fig = plt.figure(ifig, figsize=(16, 9))
     fig.clf()
 
     if periodicity:
         ax1 = fig.add_subplot(221)
     else:
         ax1 = fig.add_subplot(231)
-    ax1.set_xlim(0,L)
-    ax1.set_ylim(-0.5,0.5)
-    #ax1.set_xticks([])
+    ax1.set_xlim(0, L)
+    ax1.set_ylim(-0.5, 0.5)
     ax1.set_yticks([])
-    #ax1.axis('off')
     ax1.set_xlabel('x')
-    offsets = list(zip(XY))
     colors = np.arange(N)/N
-    colors = np.ones(N)#np.arange(N)/N
-    scale = 20
-    sc = ax1.scatter(XY[:,0],XY[:,1], c=colors, s=spheresize, edgecolor='None',
-        marker='.',cmap=plt.get_cmap('Greys'),norm=plt.Normalize(-0.2, 1))
-    line = Line2D([ 0, 0 ],[ -0.05, 0.05 ], lw=3., alpha=1, c='k')
+    colors = np.ones(N)
+    ax1.scatter(XY[:, 0], XY[:, 1], c=colors, s=spheresize, edgecolor='None',
+                marker='.', cmap=plt.get_cmap('Greys'), norm=plt.Normalize(-0.2, 1))
+    line = Line2D([0, 0], [-0.05, 0.05], lw=3., alpha=1, c='k')
     ax1.add_line(line)
-    line = Line2D([ L, L ],[ -0.05, 0.05 ], lw=3., alpha=1, c='k')
+    line = Line2D([L, L], [-0.05, 0.05], lw=3., alpha=1, c='k')
     ax1.add_line(line)
 
-    if (periodicity==False):
+    if (periodicity is False):
         ax3 = fig.add_subplot(233)
-        ax3.plot(tgrid,V_leader(tgrid))
+        ax3.plot(tgrid, V_leader(tgrid))
         ax3.set_xlabel('time')
         ax3.set_ylabel('Leader velocity')
-        ax3.plot(t,V_leader(t),'ko')
+        ax3.plot(t, V_leader(t), 'ko')
 
-    wgrid = np.linspace(0,L,500)
+    wgrid = np.linspace(0, L, 500)
     if periodicity:
         ax2 = fig.add_subplot(222)
     else:
         ax2 = fig.add_subplot(232)
-    ax2.plot(wgrid,speed_fct(wgrid))
+    ax2.plot(wgrid, speed_fct(wgrid))
     S = np.argsort(X)
     W = X[S[1:]] - X[S[:-1]]
     if periodicity:
-        W = np.append(W,(X[S[0]]+L) - X[S[-1]])
-    ax2.plot(W,speed_fct(W),'ko')
+        W = np.append(W, (X[S[0]]+L) - X[S[-1]])
+    ax2.plot(W, speed_fct(W), 'ko')
     ax2.set_xlabel('distance')
     ax2.set_ylabel('speed')
 
@@ -206,9 +198,9 @@ def plot_people(L, X, t, data, tgrid, periodicity=True, V_leader=None,
     else:
         ax4 = fig.add_subplot(234)
     for ip in np.arange(N):
-        ax4.plot(tgrid[:itmax], data[ip,0,:itmax])
-    ax4.set_ylim(0,max(L,data[:,0,:itmax].max()))
-    ax4.set_xlim(tgrid.min(),tgrid.max())
+        ax4.plot(tgrid[:itmax], data[ip, 0, :itmax])
+    ax4.set_ylim(0, max(L, data[:, 0, :itmax].max()))
+    ax4.set_xlim(tgrid.min(), tgrid.max())
     ax4.set_xlabel('time')
     ax4.set_ylabel('x')
 
@@ -218,18 +210,17 @@ def plot_people(L, X, t, data, tgrid, periodicity=True, V_leader=None,
         ax5 = fig.add_subplot(235)
     Y = np.linspace(0, 0.25*L*N, num=N)
     for ip in np.arange(N-1):
-        ax5.plot(tgrid[:itmax],Y[ip]+(data[ip+1,0,:itmax]-data[ip,0,:itmax]))
+        ax5.plot(tgrid[:itmax], Y[ip]+(data[ip+1, 0, :itmax]-data[ip, 0, :itmax]))
     if periodicity:
-        d0 = data[0,0,:itmax]
-        dN = data[N-1,0,:itmax]
-        ax5.plot(tgrid[:itmax],Y[-1]+(d0<dN)*(d0+L-dN)+(d0>=dN)*(d0-dN))
+        d0 = data[0, 0, :itmax]
+        dN = data[N-1, 0, :itmax]
+        ax5.plot(tgrid[:itmax], Y[-1]+(d0 < dN)*(d0+L-dN)+(d0 >= dN)*(d0-dN))
     ax5.set_yticks([])
-    #ax5.set_ylim(0,1.1*Y.max())
-    ax5.set_xlim(tgrid.min(),tgrid.max())
+    ax5.set_xlim(tgrid.min(), tgrid.max())
     ax5.set_xlabel('time')
     ax5.set_ylabel('distances')
 
     fig.set_tight_layout(True)
 
     if (savefig):
-        fig.savefig(filename,dpi=150)
+        fig.savefig(filename, dpi=150)

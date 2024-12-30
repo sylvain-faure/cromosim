@@ -14,11 +14,11 @@ import sys
 import os
 from optparse import OptionParser
 import json
-import scipy as sp
 import numpy as np
-import matplotlib
 import matplotlib.pyplot as plt
-import cromosim.ftl as ftl
+
+from cromosim.ftl import update_positions_ftl_order_1, update_positions_ftl_order_2
+from cromosim.ftl import plot_people
 plt.ion()
 
 """
@@ -35,8 +35,8 @@ plt.ion()
  Read the input JSON file
 """
 
-parser = OptionParser(usage="usage: %prog [options] filename",version="%prog 1.0")
-parser.add_option('--json',dest="jsonfilename",
+parser = OptionParser(usage="usage: %prog [options] filename", version="%prog 1.0")
+parser.add_option('--json', dest="jsonfilename",
                   default="input.json",
                   type="string",
                   action="store",
@@ -52,7 +52,7 @@ with open(opt.jsonfilename) as json_file:
 # Prefix for the result path
 model = input["model"]
 # tau :
-if (model=="ftl_order_2"):
+if (model == "ftl_order_2"):
     tau = input["tau"]
 prefix = input["prefix"]
 if not os.path.exists(prefix):
@@ -72,7 +72,7 @@ dt = input["dt"]
 # The positions of the persons are drawn every "drawper" iterations
 drawper = input["drawper"]
 # Prescribed velocity for the Leader (only used in the non-periodic case)
-if (periodicity==False):
+if (periodicity is False):
     V_leader = lambda t: eval(input["V_leader"])
 # Speed function
 Phi = lambda w: eval(input["speed_function"])
@@ -82,12 +82,12 @@ xmax_t0 = input["xmax_t0"]
 
 # To build tgrid, Nt is the number of time iterations
 Nt = int(np.floor(T/dt))+1
-Nt += (Nt*dt<T)
+Nt += (Nt*dt < T)
 tgrid = dt*np.arange(Nt)
-tgrid[-1] = min(T,tgrid[-1])
+tgrid[-1] = min(T, tgrid[-1])
 
 # data : array where the positions and the velocities will be stored
-data = np.zeros((N,2,Nt))
+data = np.zeros((N, 2, Nt))
 
 # Iteration counter
 counter = 0
@@ -96,50 +96,50 @@ counter = 0
 time = 0.0
 Xold = np.linspace(xmin_t0, xmax_t0, N)
 Vold = np.zeros(Xold.shape)
-data[:,0,counter] = Xold
+data[:, 0, counter] = Xold
 shift = np.zeros(Xold.shape)
 
 
 # Time loop
 while (time < T-0.5*dt):
-    dt = min(dt,T-time)
-    if (model=="ftl_order_1"):
+    dt = min(dt, T-time)
+    if (model == "ftl_order_1"):
         if periodicity:
-            X, V = ftl.update_positions_ftl_order_1(L, Xold, time, dt, Phi)
+            X, V = update_positions_ftl_order_1(L, Xold, time, dt, Phi)
         else:
-            X, V = ftl.update_positions_ftl_order_1(L, Xold, time, dt, Phi,
-                                V_leader=V_leader, periodicity=periodicity)
-    elif (model=="ftl_order_2"):
+            X, V = update_positions_ftl_order_1(L, Xold, time, dt, Phi,
+                                                V_leader=V_leader, periodicity=periodicity)
+    elif (model == "ftl_order_2"):
         if periodicity:
-            X, V = ftl.update_positions_ftl_order_2(L, Xold, Vold, time, dt,
-                                                    tau, Phi)
+            X, V = update_positions_ftl_order_2(L, Xold, Vold, time, dt,
+                                                tau, Phi)
         else:
-            X, V = ftl.update_positions_ftl_order_2(L, Xold, Vold, time, dt,
-                                tau, Phi, V_leader=V_leader,
-                                periodicity=periodicity)
+            X, V = update_positions_ftl_order_2(L, Xold, Vold, time, dt,
+                                                tau, Phi, V_leader=V_leader,
+                                                periodicity=periodicity)
     else:
         print("Bad model name... EXIT")
         sys.exit()
-    ind = np.where((X-Xold<0))[0]
+    ind = np.where((X-Xold < 0))[0]
     shift[ind] += L
-    data[:,0,counter] = X + shift
-    data[:,1,counter] = V
+    data[:, 0, counter] = X + shift
+    data[:, 1, counter] = V
     time += dt
     Xold = X
     Vold = V
     counter += 1
-    if (counter%drawper == 0):
+    if (counter % drawper == 0):
         if periodicity:
-            ftl.plot_people(L, X, time, data, tgrid, speed_fct=Phi,
-                            ifig=10, savefig=True,
-                            filename=prefix+"fig_"+str(counter).zfill(6)+".png")
+            plot_people(L, X, time, data, tgrid, speed_fct=Phi,
+                        ifig=10, savefig=True,
+                        filename=prefix+"fig_"+str(counter).zfill(6)+".png")
         else:
-            ftl.plot_people(L, X, time, data, tgrid, V_leader=V_leader,
-                            periodicity=periodicity, speed_fct=Phi, ifig=10,
-                            savefig=True,
-                            filename=prefix+"fig_"+str(counter).zfill(6)+".png")
-        plt.pause(0.01)
-        print("==> Time : ",time," s, dt = ",dt," counter = ",counter)
+            plot_people(L, X, time, data, tgrid, V_leader=V_leader,
+                        periodicity=periodicity, speed_fct=Phi, ifig=10,
+                        savefig=True,
+                        filename=prefix+"fig_"+str(counter).zfill(6)+".png")
+        plt.pause(0.05)
+        print("==> Time : ", time, " s, dt = ", dt, " counter = ", counter)
 
 plt.ioff()
 plt.show()

@@ -98,10 +98,10 @@ def plot_people_according_to_initial_door_distance(ifig, people, domain, results
     I0 = results[:, 0, 0]
     J0 = results[:, 1, 0]
     D0 = domain.destinations["door"].distance[I0, J0]
-    I = results[:, 0, -1]
-    J = results[:, 1, -1]
+    II = results[:, 0, -1]
+    JJ = results[:, 1, -1]
     tmp = domain.destinations["door"].distance.copy()
-    tmp[I, J] = D0
+    tmp[II, JJ] = D0
     ax1.imshow(tmp * (people == 1), interpolation='nearest',
                extent=[domain.xmin, domain.xmax, domain.ymin, domain.ymax],
                origin='lower', alpha=1.0, cmap='Greys')
@@ -144,7 +144,7 @@ def compute_exit_times(dt, results):
     Np = results.shape[0]
     exit_times = -np.ones(Np)
     for id in np.arange(Np):
-        exit_times[id] = dt * np.where(results[id, 0,:] == -1)[0].min()
+        exit_times[id] = dt * np.where(results[id, 0, :] == -1)[0].min()
     return exit_times
 
 
@@ -269,9 +269,9 @@ def plot_people_paths(ifig, dt, pixel_size, people, domain, results, axis=None,
         col = np.hstack((col, np.ones(ns) * exit_times[id]))
     paths = LineCollection(0.5 * pixel_size + pixel_size * traj, linewidths=2,
                            linestyle="solid", cmap=cmap,
-                           norm=colors.BoundaryNorm( \
-                               boundaries=np.linspace(vmin, vmax, cmap.N + 1), \
-                               ncolors=cmap.N) \
+                           norm=colors.BoundaryNorm(
+                               boundaries=np.linspace(vmin, vmax, cmap.N + 1),
+                               ncolors=cmap.N)
                            )
     paths.set_array(exit_times)
     ax1.add_collection(paths)
@@ -292,7 +292,6 @@ def plot_people_paths(ifig, dt, pixel_size, people, domain, results, axis=None,
     fig.canvas.draw()
     if (savefig):
         fig.savefig(filename, dpi=150, bbox_inches='tight', pad_inches=0)
-    plt.pause(0.01)
 
 
 def sequential_update(people, people_ij, weight, shuffle=None,
@@ -329,54 +328,54 @@ def sequential_update(people, people_ij, weight, shuffle=None,
     """
     Np = people_ij.shape[0]
     height, width = people.shape
-    if (randomstate == None):
+    if (randomstate is None):
         randomstate = np.random.RandomState()
     # print("---------- sequential_update: shuffle = ",shuffle)
-    ## Default: no shuffle update
+    # Default: no shuffle update
     order = np.arange(Np)
     if (shuffle == 'random'):
-        ## Random shuffle update
+        # Random shuffle update
         randomstate.shuffle(order)
     elif (shuffle == 'random_frozen'):
-        ## Frozen shuffle update
+        # Frozen shuffle update
         local_seed = 0.5
         random.shuffle(order, lambda: local_seed)
     for id in order:
-        i = people_ij[id, 0];
+        i = people_ij[id, 0]
         j = people_ij[id, 1]
         # print("--------- sequential_update: id = ",id," i = ",i," j = ",j)
         if ((i != -1) and (j != -1)):
-            I = [i];
-            J = [j]
+            II = [i]
+            JJ = [j]
             if (i >= 1):
                 im = i - 1
                 if ((people[im, j] is not np.ma.masked) and (people[im, j] != 1)):
-                    I.append(im);
-                    J.append(j)
+                    II.append(im)
+                    JJ.append(j)
             if (i <= height - 2):
                 ip = i + 1
                 if ((people[ip, j] is not np.ma.masked) and (people[ip, j] != 1)):
-                    I.append(ip);
-                    J.append(j)
+                    II.append(ip)
+                    JJ.append(j)
             if (j >= 1):
                 jm = j - 1
                 if ((people[i, jm] is not np.ma.masked) and (people[i, jm] != 1)):
-                    I.append(i);
-                    J.append(jm)
+                    II.append(i)
+                    JJ.append(jm)
             if (j <= width - 2):
                 jp = j + 1
                 if ((people[i, jp] is not np.ma.masked) and (people[i, jp] != 1)):
-                    I.append(i);
-                    J.append(jp)
-            w = weight[I, J] / np.sum(weight[I, J])
+                    II.append(i)
+                    JJ.append(jp)
+            w = weight[II, JJ] / np.sum(weight[II, JJ])
             # print("--------- sequential_update: I = ",I," J = ", J," w = ",w)
 
-            pos = randomstate.choice(len(I), 1, p=w)
+            pos = randomstate.choice(len(II), 1, p=w)
             # print("--------- sequential_update: pos = ",pos)
             people.data[i, j] = 0
-            people.data[I[pos[0]], J[pos[0]]] = 1
-            people_ij[id, 0] = I[pos[0]]
-            people_ij[id, 1] = J[pos[0]]
+            people.data[II[pos[0]], JJ[pos[0]]] = 1
+            people_ij[id, 0] = II[pos[0]]
+            people_ij[id, 1] = JJ[pos[0]]
     # print("===> Move: people_ij = ",people_ij)
     return people, people_ij
 
@@ -414,52 +413,52 @@ def parallel_update(people, people_ij, weight, friction=0, randomstate=None):
     """
     height, width = people.shape
     nn = people_ij.shape[0]
-    if (randomstate == None):
+    if (randomstate is None):
         randomstate = np.random.RandomState()
-    new_ij = -np.ones((nn, 3))  ## new_i new_j proba
+    new_ij = -np.ones((nn, 3))  # new_i new_j proba
     for id in np.arange(nn):
-        i = people_ij[id, 0];
+        i = people_ij[id, 0]
         j = people_ij[id, 1]
         if ((i != -1) and (j != -1)):
-            I = [i];
-            J = [j]
+            II = [i]
+            JJ = [j]
             if (i >= 1):
                 im = i - 1
                 if ((people[im, j] is not np.ma.masked) and (people[im, j] != 1)):
-                    I.append(im);
-                    J.append(j)
+                    II.append(im)
+                    JJ.append(j)
             if (i <= height - 2):
                 ip = i + 1
                 if ((people[ip, j] is not np.ma.masked) and (people[ip, j] != 1)):
-                    I.append(ip);
-                    J.append(j)
+                    II.append(ip)
+                    JJ.append(j)
             if (j >= 1):
                 jm = j - 1
                 if ((people[i, jm] is not np.ma.masked) and (people[i, jm] != 1)):
-                    I.append(i);
-                    J.append(jm)
+                    II.append(i)
+                    JJ.append(jm)
             if (j <= width - 2):
                 jp = j + 1
                 if ((people[i, jp] is not np.ma.masked) and (people[i, jp] != 1)):
-                    I.append(i);
-                    J.append(jp)
-            w = weight[I, J] / np.sum(weight[I, J])
-            pos = randomstate.choice(len(I), 1, p=w)
-            new_ij[id, 0] = I[pos[0]]
-            new_ij[id, 1] = J[pos[0]]
+                    II.append(i)
+                    JJ.append(jp)
+            w = weight[II, JJ] / np.sum(weight[II, JJ])
+            pos = randomstate.choice(len(II), 1, p=w)
+            new_ij[id, 0] = II[pos[0]]
+            new_ij[id, 1] = JJ[pos[0]]
             new_ij[id, 2] = w[pos[0]]
     ind = np.where(new_ij[:, 0] != -1)[0]
     # Find the conflicts
     unique_ij, index, inverse, counts = np.unique(new_ij[ind, :2], axis=0, return_index=True, return_inverse=True,
-                                                  return_counts=True)  ## numpy 1.13 only !!
+                                                  return_counts=True)  # numpy 1.13 only !!
     if (unique_ij.shape[0] < ind.shape[0]):
         for ic, cc in enumerate(counts):
-            if (cc > 1):  ## Conflict...
-                ind_conf = np.where(inverse == ic)[0]  ## Positions of people concerned by the Conflicts
-                npc = ind_conf.shape[0]  ## Number of concerned persons
+            if (cc > 1):  # Conflict...
+                ind_conf = np.where(inverse == ic)[0]  # Positions of people concerned by the Conflicts
+                npc = ind_conf.shape[0]  # Number of concerned persons
                 print("---------- Conflicts between ", npc, " persons")
-                ## No agent will move to the empty cell with the probability "friction"
-                choice = randomstate.choice(2, 1, p=[friction, 1 - friction])[0]  ## 0 = no agent move...
+                # No agent will move to the empty cell with the probability "friction"
+                choice = randomstate.choice(2, 1, p=[friction, 1 - friction])[0]  # 0 = no agent move...
                 if (choice == 0):
                     print("---------- => Friction... No agent move...")
                     for id in np.arange(ind_conf.shape[0]):
@@ -467,20 +466,20 @@ def parallel_update(people, people_ij, weight, friction=0, randomstate=None):
                 else:
                     print("---------- => One agent move...")
                     w = new_ij[ind[ind_conf], 2] / np.sum(new_ij[ind[ind_conf], 2])
-                    pos = randomstate.choice(ind_conf.shape[0], 1, p=w)  ## Winner
+                    pos = randomstate.choice(ind_conf.shape[0], 1, p=w)  # Winner
                     for id in np.arange(ind_conf.shape[0]):
                         if (id != pos):
                             new_ij[ind[ind_conf[id]], :2] = people_ij[ind[ind_conf[id]], :2]
-    ## Update
+    # Update
     for id in np.arange(nn):
-        i = people_ij[id, 0];
+        i = people_ij[id, 0]
         j = people_ij[id, 1]
-        I = int(new_ij[id, 0])
-        J = int(new_ij[id, 1])
+        II = int(new_ij[id, 0])
+        JJ = int(new_ij[id, 1])
         people.data[i, j] = 0
-        people.data[I, J] = 1
-        people_ij[id, 0] = I
-        people_ij[id, 1] = J
+        people.data[II, JJ] = 1
+        people_ij[id, 0] = II
+        people_ij[id, 1] = JJ
     # print("===> Move: people_ij = ",people_ij)
     return people, people_ij
 

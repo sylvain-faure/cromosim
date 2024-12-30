@@ -1,5 +1,5 @@
-from setuptools import setup, find_packages
-import os
+from os import path
+from setuptools import setup
 
 CLASSIFIERS = [
     "Development Status :: 5 - Production/Stable",
@@ -23,6 +23,7 @@ MINOR = "0"
 PATCH = "2"
 VERSION = "{0}.{1}.{2}".format(MAJOR, MINOR, PATCH)
 
+
 def write_version_py(filename='cromosim/version.py'):
     a = open(filename, 'w')
     try:
@@ -30,42 +31,42 @@ def write_version_py(filename='cromosim/version.py'):
     finally:
         a.close()
 
+
 # read the contents of your README file
-from os import path
 this_directory = path.abspath(path.dirname(__file__))
 with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
-#README = open("README.rst").readlines()
+# README = open("README.rst").readlines()
 
 write_version_py()
 
 setup(
-    name           = "cromosim",
-    version        = VERSION,
-    #description    = README[0],
-    #long_description_content_type = 'text/x-rst',
-    #long_description = "".join(README[1:]),
+    name="cromosim",
+    version=VERSION,
+    # description=README[0],
+    # long_description_content_type='text/x-rst',
+    # long_description="".join(README[1:]),
     long_description=long_description,
     long_description_content_type='text/markdown',
-    author         = "Sylvain Faure, Bertrand Maury",
-    author_email   = "sylvain.faure@math.u-psud.fr, bertrand.maury@math.u-psud.fr",
-    url            = "http://www.cromosim.fr",
-    license        = "GPL",
-    keywords       = "Crowd Motion Simulator",
-    classifiers    = CLASSIFIERS,
-    #packages       = find_packages(exclude=['doc','examples']),
-    packages       = ["cromosim"],
+    author="Sylvain Faure, Bertrand Maury",
+    author_email="sylvain.faure@math.u-psud.fr, bertrand.maury@math.u-psud.fr",
+    url="http://www.cromosim.fr",
+    license="GPL",
+    keywords="Crowd Motion Simulator",
+    classifiers=CLASSIFIERS,
+    # packages=find_packages(exclude=['doc','examples']),
+    packages=["cromosim"],
     include_package_data=True,
     install_requires=[
-                      'numpy>=1.18.0',
-                      'scipy>=1.4.0',
-                      'Pillow>=6.0.0',
-                      'matplotlib>=3.1.0',
-                      'numpydoc>=0.9.0',
-                      'sphinx>=2.4.0',
-                      'scikit-fmm>=2019.1.30',
-                      'cvxopt>=1.2.0',
-                      'imageio>=2.8.0'
+                      'numpy',
+                      'scipy',
+                      'Pillow',
+                      'matplotlib',
+                      'numpydoc',
+                      'sphinx',
+                      'scikit-fmm',
+                      'cvxopt',
+                      'imageio'
                       ],
 )
