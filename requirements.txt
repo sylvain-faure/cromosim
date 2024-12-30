@@ -7,3 +7,4 @@ sphinx
 scikit-fmm
 cvxopt
 imageio
+pytest
