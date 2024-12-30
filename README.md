@@ -14,38 +14,30 @@ This package proposes Python implementations of the numerical methods detailed i
 How to use cromosim ?
 ---------------------
 
-First you have to install cromosim, either by using pip:
+- You can either install the main modules with pip:
 
     ~$ pip install cromosim
 
-or by manually installing the package:
+and then download one of the examples:
 
+    ~$ mkdir my_first_example
+    ~$ cd my_first_example
+    my_first_example$ wget https://github.com/sylvain-faure/cromosim/blob/master/examples/domain/domain_room.py
+    my_first_example$ wget https://github.com/sylvain-faure/cromosim/blob/master/examples/domain/room.png
+    my_first_example$ python domain_room.py
+
+- Or clone the entire folder with git and install it manually:
+
+    ~$ git clone git@github.com:sylvain-faure/cromosim.git
+    ~$ cd cromosim
     cromosim$ python setup.py install
 
-Once cromosim is installed, you can verify that it is possible to import it
-into Python:
+and then try one of the scripts in the 'examples' folder :
+    
+    cromosim$ cd examples/domain
+    cromosim/examples/domain$ python domain_room.py
 
-    ~$ python
-    Python 3.7.7 (default, Mar 10 2020, 15:43:33)
-    [Clang 11.0.0 (clang-1100.0.33.17)] on darwin
-    Type "help", "copyright", "credits" or "license" for more information.
-    >>> import cromosim
-    >>> print(cromosim.__version__)
-    2.0.0
-    >>>
+For more information
+---------------------
 
-Now to make a first simulation, you can download one of the examples found in:
-
-    https://github.com/sylvain-faure/cromosim/tree/master/examples
-
-or retrieve all the examples available using the following command (svn
-is the Subversion command):
-
-    ~$ svn export https://github.com/sylvain\-faure/cromosim/trunk/examples my-cromosim
-
-and then run a first example:
-
-    ~$ cd my-cromosim/micro/granular
-    granular$ python micro_granular.py --json input_room.json
-
-These examples will allow you to start your own calculations.
+https://www.cromosim.fr
