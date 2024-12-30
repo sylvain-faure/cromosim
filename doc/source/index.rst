@@ -72,14 +72,17 @@ You can either install the main modules with pip:
 
 and then manually download the files for one of the examples you're interested in, such as
 
-  https://github.com/sylvain-faure/cromosim/blob/master/examples/domain/domain_room.py
-  https://github.com/sylvain-faure/cromosim/blob/master/examples/domain/room.png
+  https://github.com/sylvain-faure/cromosim/blob/master/examples/micro/social/micro_social.py
+  
+  https://github.com/sylvain-faure/cromosim/blob/master/examples/micro/social/input_room.json
+  
+  https://github.com/sylvain-faure/cromosim/blob/master/examples/micro/social/room.png
 
 and finally, once you've retrieved the files, you can run the script: 
 
 .. code-block:: bash
    
-  ~$ python domain_room.py
+  ~$ python micro_social.py --json input_room.json
 
 Or clone the entire folder with git and install it manually:
 
@@ -93,8 +96,8 @@ and then try one of the scripts in the 'examples' folder:
 
 .. code-block:: bash
 
-  cromosim$ cd examples/domain
-  cromosim/examples/domain$ python domain_room.py
+  cromosim$ cd examples/micro/social
+  cromosim/examples/micro/social$ python micro_social.py --json input_room.json
 
 Examples for users
 ==================
