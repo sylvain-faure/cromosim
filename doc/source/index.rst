@@ -20,11 +20,11 @@ in the following book:
     crowds*" by  B. Maury (ENS Ulm & Univ. Paris-Saclay) and S. Faure (CNRS), World
     Scientific 2018, Advanced textbooks in mathematics.
 
-This documentation concerns the **Release 2.0** of cromosim. The old documentation
+This documentation concerns the **Release 2.X** of cromosim. The old documentation
 corresponding to the **Release 1.0** is available there: http://www.cromosim.fr/1.0
 
 
-Main new features of the **Release 2.0** of cromosim (mainly concerning
+Main new features of the **Release 2.X** of cromosim (mainly concerning
 microscopic crowd modeling):
 
   * addition of a Destination class allowing to use a more elaborate color
@@ -49,6 +49,7 @@ This documentation is hosted on a server of the Mathematics Department of Orsay
    <div align=center>
    <img src="_static/logo_lmo.png" alt="Laboratoire de Mathématiques d'Orsay" width="25%" height="auto"/>
    <img src="_static/logo_Paris-Saclay.png" alt="Université Paris-Saclay" width="25%" height="auto"/>
+   <img src="_static/cnrs.png" alt="CNRS" width="9%" height="auto"/>
    </div>
 
 .. currentmodule:: cromosim
@@ -63,52 +64,34 @@ https://github.com/sylvain-faure/cromosim/
 How to use cromosim ?
 =====================
 
-First you have to install cromosim, either by using pip
+You can either install the main modules with pip:
 
-.. code-block:: javascript
+.. code-block:: bash
 
   ~$ pip install cromosim
 
-or by manually installing the package
+and then download one of the examples:
 
 .. code-block:: bash
 
+  ~$ wget https://github.com/sylvain-faure/cromosim/blob/master/examples/domain/domain_room.py
+  ~$ wget https://github.com/sylvain-faure/cromosim/blob/master/examples/domain/room.png
+  ~$ python domain_room.py
+
+Or clone the entire folder with git and install it manually:
+
+.. code-block:: bash
+
+  ~$ git clone git@github.com:sylvain-faure/cromosim.git
+  ~$ cd cromosim
   cromosim$ python setup.py install
 
-Once cromosim is installed, you can verify that it is possible to import it
-into Python:
+and then try one of the scripts in the 'examples' folder:
 
 .. code-block:: bash
 
-  ~$ python
-  Python 3.7.7 (default, Mar 10 2020, 15:43:33)
-  [Clang 11.0.0 (clang-1100.0.33.17)] on darwin
-  Type "help", "copyright", "credits" or "license" for more information.
-  >>> import cromosim
-  >>> print(cromosim.__version__)
-  2.0.0
-  >>>
-
-Now to make a first simulation, you can download one of the examples found in:
-
-https://github.com/sylvain-faure/cromosim/tree/master/examples
-
-or retrieve all the examples available using the following command (``svn``
-is the Subversion command):
-
-.. code-block:: bash
-
-  ~$ svn export https://github.com/sylvain\-faure/cromosim/trunk/examples my-cromosim
-
-and then run a first example:
-
-.. code-block:: bash
-
-  ~$ cd my-cromosim/micro/granular
-  granular$ python micro_granular.py --json input_room.json
-
-These examples will allow you to start your own calculations.
-
+  cromosim$ cd examples/domain
+  cromosim/examples/domain$ python domain_room.py
 
 Examples for users
 ==================
