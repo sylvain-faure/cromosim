@@ -42,31 +42,6 @@ and then try one of the scripts in the 'examples' folder:
 The build uses CMake, scikit-build-core and pybind11. Python 3.10 to 3.13 is
 supported on Linux, macOS and Windows.
 
-Compiled Uzawa or Nesterov solvers
-----------------------------------
-
-The portable C++ solver is available through `cromosim.solvers`. Inputs use the
-same `(N, 4)`, `(M, 5)` and `(N, 2)` layouts as `cromosim.micro.projection`:
-
-```python
-import numpy as np
-from cromosim.solvers import Minimizer, solve
-
-xyrv = np.array([[0.0, 0.0, 0.5, 1.0]])
-contacts = np.empty((0, 5))
-desired_velocity = np.array([[1.0, 0.0]])
-
-velocity, pressure, multipliers, info = solve(
-    xyrv,
-    contacts,
-    desired_velocity,
-    time_step=0.1,
-)
-```
-
-See `benchmarks/README.md` for the reproducible timing comparison with the
-Python implementation.
-
 For more information
 ---------------------
 
