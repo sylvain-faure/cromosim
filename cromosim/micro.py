@@ -2060,9 +2060,9 @@ def people_update_destination(all_people, domains, thld, box=None):
                                     # destination
                                     #print("     => change destination...")
                                     _LOGGER.info(
-                                        "people_update_destination: people who don't change domains, "
-                                        f"just destinations => ids={all_people[name]["id"][ind[ind2[ind3]]]}, "
-                                        f"xy={all_people[name]["id"][ind[ind2[ind3]]]}"
+                                        f"people_update_destination: people who don't change domains, "
+                                        f"just destinations => ids={ all_people[name]['id'][ind[ind2[ind3]]] }, "
+                                        f"xy={all_people[name]['xyrv'][ind[ind2[ind3]]]}"
                                     )
                                     all_people[name]["destinations"][ind[ind2[ind3]]] \
                                         = nextdest    

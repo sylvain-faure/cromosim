@@ -211,7 +211,7 @@ for domain_index, domain_config in enumerate(domain_configs):
         )
         LOGGER.info(
                 f"Building domain {domain_index}: {name} => "
-                f"Add destination {destination_index}: {destination_config["name"]}")
+                f"Add destination {destination_index}: {destination_config['name']}")
         domain.add_destination(destination)
         if (config["with_graphes"]):
             domain.plot_desired_velocity(
