@@ -39,7 +39,7 @@ and then try one of the scripts in the 'examples' folder:
     cromosim$ cd examples/micro/social
     cromosim/examples/micro/social$ python micro_social.py --json input_room.json
 
-The build uses CMake, scikit-build-core and pybind11. Python 3.10 to 3.14 is
+The build uses CMake, scikit-build-core and pybind11. Python 3.10 to 3.13 is
 supported on Linux, macOS and Windows.
 
 For more information

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(cromosim VERSION 3.1.0 LANGUAGES CXX)
+project(cromosim VERSION 3.1.2 LANGUAGES CXX)
 
 # Package builds only need the Python extension. The standalone C++ project in
 # cromosim/solvers keeps its own tests, benchmark and installable CMake package.
