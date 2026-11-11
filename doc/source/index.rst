@@ -20,9 +20,33 @@ in the following book:
     crowds*" by  B. Maury (ENS Ulm & Univ. Paris-Saclay) and S. Faure (CNRS), World
     Scientific 2018, Advanced textbooks in mathematics.
 
-This documentation concerns the **Release 2.X** of cromosim. The old documentation
-corresponding to the **Release 1.0** is available there: http://www.cromosim.fr/1.0
+This documentation concerns the **Release 3.X** of cromosim. 
 
+The old documentations corresponding to the **Release 1.0 or 2.0** are available there: https://www.cromosim.fr/1.0
+or https://www.cromosim.fr/2.0
+
+Main new features of the **Release 3.X** of cromosim (mainly concerning
+microscopic crowd modeling):
+
+  * The addition of a visualization module to provide more efficient 
+    Matplotlib visualization as well as visualization using PyVista for 
+    rendering.
+  * The option to follow up one destination with a new destination chosen 
+    at random from among those listed (the selection may be weighted).
+  * For the velocity projection step of the granular microscopic model, 
+    the Nesterov method has been added in addition to the Uzawa method. 
+    Two implementations are available: one in Python and the other in C++.
+  * The option to add a multiplicative coefficient—beta—in front of the 
+    desired speeds of certain individuals in microscopic models. This 
+    coefficient is calculated by taking into account these individuals’ 
+    frustration; they become frustrated if other individuals obstruct 
+    their movement. A frustrated individual will have a small value 
+    for beta, which reduces their desired speed; they will not “push” 
+    the individuals in front of them.
+  * The ability to set the positions of a group of characters on colored 
+    pixels. For example, to place characters on chairs, simply add a 
+    pixel of a specific color to each chair and specify that color in 
+    the lines corresponding to the group within the JSON file.
 
 Main new features of the **Release 2.X** of cromosim (mainly concerning
 microscopic crowd modeling):
@@ -32,14 +56,14 @@ microscopic crowd modeling):
   * possibility of having several elements of the Domain class. It is for
     example possible to define a domain per floor.
   * possibility of having several possible destinations for people and
-    chaining them
-  * possibility of defining stairs, thanks to the Destination class
+    chaining them.
+  * possibility of defining stairs, thanks to the Destination class.
   * during the initialization of groups of people, their radius and speed of
     movement can be defined with probability laws (normal or uniform). They are
     also assigned an initial destination.
 
 Unfortunately these big changes break the backward compatibility with
-**Release 1.0** scripts, at least for microscopic crowd modeling.
+**Release 1.0 or 2.0** scripts, at least for microscopic crowd modeling.
 
 This documentation is hosted on a server of the Mathematics Department of Orsay
 (Univ. Paris-Saclay, France).
@@ -64,35 +88,25 @@ https://github.com/sylvain-faure/cromosim/
 How to use cromosim ?
 =====================
 
-You can either install the main modules with pip:
+You can install the main modules with pip:
 
 .. code-block:: bash
 
   ~$ pip install cromosim
 
-and then manually download the files for one of the examples you're interested in, such as
+Then, you can either run one of the examples in the “examples” folder 
+from the command line, or start with a notebook from the “notebooks” folder.
 
-  https://github.com/sylvain-faure/cromosim/blob/master/examples/micro/social/micro_social.py
-  
-  https://github.com/sylvain-faure/cromosim/blob/master/examples/micro/social/input_room.json
-  
-  https://github.com/sylvain-faure/cromosim/blob/master/examples/micro/social/room.png
-
-and finally, once you've retrieved the files, you can run the script: 
-
-.. code-block:: bash
-   
-  ~$ python micro_social.py --json input_room.json
-
-Or clone the entire folder with git and install it manually:
+If you'd rather install Cromosim manually, you can download the entire 
+repository from GitHub and use pip:
 
 .. code-block:: bash
 
   ~$ git clone git@github.com:sylvain-faure/cromosim.git
   ~$ cd cromosim
-  cromosim$ python setup.py install
+  cromosim$ pip install .
 
-and then try one of the scripts in the 'examples' folder:
+To try one of the scripts in the 'examples' folder:
 
 .. code-block:: bash
 
@@ -123,6 +137,7 @@ Documentation of the code
    Module for cellular automata <ca>
    Module for microscopic simulations with the granular or the social force models <micro>
    Module for the compartment model <comp>
+   Module for visualizing individuals in microscopic models using Matplotlib or PyVista rendering <visu>
 
 Indices and tables
 ==================

@@ -11,8 +11,8 @@ This package proposes Python implementations of the numerical methods detailed i
 
 
 
-How to use cromosim ?
----------------------
+Installation
+------------
 
 You can either install the main modules with pip
 
@@ -28,16 +28,44 @@ and finally, once you've retrieved the files, you can run the script:
 
     ~$ python micro_social.py --json input_room.json
 
-Or clone the entire folder with git and install it manually:
+Or clone the repository and install it with a C++17 compiler:
 
-    ~$ git clone git@github.com:sylvain-faure/cromosim.git
+    ~$ git clone https://github.com/sylvain-faure/cromosim.git
     ~$ cd cromosim
-    cromosim$ python setup.py install
+    cromosim$ python -m pip install .
 
 and then try one of the scripts in the 'examples' folder:
     
     cromosim$ cd examples/micro/social
     cromosim/examples/micro/social$ python micro_social.py --json input_room.json
+
+The build uses CMake, scikit-build-core and pybind11. Python 3.10 to 3.13 is
+supported on Linux, macOS and Windows.
+
+Compiled Uzawa or Nesterov solvers
+----------------------------------
+
+The portable C++ solver is available through `cromosim.solvers`. Inputs use the
+same `(N, 4)`, `(M, 5)` and `(N, 2)` layouts as `cromosim.micro.projection`:
+
+```python
+import numpy as np
+from cromosim.solvers import Minimizer, solve
+
+xyrv = np.array([[0.0, 0.0, 0.5, 1.0]])
+contacts = np.empty((0, 5))
+desired_velocity = np.array([[1.0, 0.0]])
+
+velocity, pressure, multipliers, info = solve(
+    xyrv,
+    contacts,
+    desired_velocity,
+    time_step=0.1,
+)
+```
+
+See `benchmarks/README.md` for the reproducible timing comparison with the
+Python implementation.
 
 For more information
 ---------------------

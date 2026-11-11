@@ -134,9 +134,11 @@ with open(opt.jsonfilename) as json_file:
     |                },...
     |             ],
     |             "velocity_scale": float,
-    |             "next_destination": null or string,
-    |             "next_domain": null or string,
-    |             "next_transit_box": null or [[x0,y0],...,[x3,y3]]
+    |             "next_destination": [null] or [string],
+    |             "next_domain": [null] or [string],
+    |             "next_transit_box": [null] or [ [[x0,y0],...,[x3,y3]] ],
+    |             "next_transit_box_xshift": [0.0],
+    |             "next_transit_box_yshift": [0.0],
     |            },...
     |        ]
     |--------------------

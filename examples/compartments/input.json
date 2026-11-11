@@ -24,9 +24,12 @@
         "excluded_colors":[ [0,0,0] ],
         "desired_velocity_from_color":[],
         "velocity_scale": 1,
-        "next_destination": null,
-        "next_domain": null,
-        "next_transit_box":null
+        "next_destination":         [null], 
+        "next_domain":              [null], 
+        "next_destination_weights": [1.0], 
+        "next_transit_box":         [null], 
+        "next_transit_box_xshift":  [0.0], 
+        "next_transit_box_yshift":  [0.0]
       }
     ]
   },
@@ -41,5 +44,5 @@
   "CircAngles": [ 0, 0, -90, -90, -90, 0],
   "Np_rooms":[100, 20, 30, 30, 30, 80],
   "DoorRoomCapacity":[ 27, 5, 4, 4, 4, 16],
-  "Nsecondes":32
+  "Nseconds":32
 }

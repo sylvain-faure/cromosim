@@ -1,7 +1,12 @@
 include LICENSE
-include README.rst
+include README.md
 include MANIFEST.in
-recursive-include examples *.py
+include CMakeLists.txt
+include pyproject.toml
+recursive-include cromosim/solvers *.cpp *.hpp *.txt *.cmake *.in
+recursive-include benchmarks *.py *.md
 recursive-include tests *.py *.npz *.npy
+recursive-include examples *.py
 recursive-include doc *
 prune doc/_build
+prune cromosim/solvers/build

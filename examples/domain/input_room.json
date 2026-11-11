@@ -25,12 +25,9 @@
         "fill_color": [0,0,0]
       }
     ],
-    "shape_ellipses":[
-    ],
-    "shape_rectangles":[
-    ],
-    "shape_polygons":[
-    ],
+    "shape_ellipses":[],
+    "shape_rectangles":[],
+    "shape_polygons":[],
     "destinations":[
       {
         "name": "door",
@@ -38,9 +35,12 @@
         "excluded_colors":[ [0,0,0] ],
         "desired_velocity_from_color":[],
         "velocity_scale": 1,
-        "next_destination": null,
-        "next_domain": null,
-        "next_transit_box":null
+        "next_destination":         [null], 
+        "next_domain":              [null], 
+        "next_destination_weights": [1.0], 
+        "next_transit_box":         [null], 
+        "next_transit_box_xshift":  [0.0], 
+        "next_transit_box_yshift":  [0.0]
       }
     ]
   }

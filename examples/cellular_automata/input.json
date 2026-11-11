@@ -38,9 +38,12 @@
         "excluded_colors":[ [0,0,0] ],
         "desired_velocity_from_color":[],
         "velocity_scale": 1,
-        "next_destination": null,
-        "next_domain": null,
-        "next_transit_box":null
+        "next_destination":         [null], 
+        "next_domain":              [null], 
+        "next_destination_weights": [1.0], 
+        "next_transit_box":         [null], 
+        "next_transit_box_xshift":  [0.0], 
+        "next_transit_box_yshift":  [0.0]
       }
     ]
   },
@@ -49,7 +52,7 @@
   "Np":140,
   "Tf":100.0,
   "dt":0.005,
-  "drawper":1,
+  "plot_period":1,
   "update_strategy":"sequential",
   "kappa":10.0
 }

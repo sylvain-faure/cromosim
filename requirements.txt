@@ -8,3 +8,6 @@ scikit-fmm
 cvxopt
 imageio
 pytest
+imageio-ffmpeg
+vtk
+pyvista

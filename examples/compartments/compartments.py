@@ -16,6 +16,15 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Circle, Ellipse, Rectangle, Polygon
 from matplotlib.lines import Line2D
 
+import logging
+logging.basicConfig(
+    level=logging.INFO,
+    # format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+    format="%(levelname)-8s | %(name)s | %(message)s",
+)
+LOGGER = logging.getLogger(__name__)
+# LOG_FORMAT = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+
 from cromosim.domain import Domain
 from cromosim.domain import Destination
 from cromosim.comp import plot_compt, iteration
@@ -24,19 +33,19 @@ from cromosim.comp import plot_compt, iteration
     python compartments.py --json input.json
 """
 
-parser = OptionParser(usage="usage: %prog [options] filename", version="%prog 1.0")
-parser.add_option('--json', dest="jsonfilename", default="input.json", type="string",
-                  action="store", help="Input json filename")
+parser = OptionParser(usage="usage: %prog [options] filename",
+                      version="%prog 1.0")
+parser.add_option('--json', dest="jsonfilename", default="input.json",
+                  type="string", action="store", help="Input json filename")
 opt, remainder = parser.parse_args()
-print("===> JSON filename = ", opt.jsonfilename)
+
+LOGGER.info(f"Loading JSON configuration: {opt.jsonfilename}")
+
 with open(opt.jsonfilename) as json_file:
     try:
-        input = json.load(json_file)
-    except json.JSONDecodeError as msg:
-        print(msg)
-        print("Failed to load json file ", opt.jsonfilename)
-        print("Check its content (https://fr.wikipedia.org/wiki/JavaScript_Object_Notation)")
-        sys.exit()
+        config = json.load(json_file)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON in {opt.jsonfilename}: {exc}") from exc
 
 """
     Get parameters from json file :
@@ -126,9 +135,11 @@ with open(opt.jsonfilename) as json_file:
     |                },...
     |             ],
     |             "velocity_scale": float,
-    |             "next_destination": null or string,
-    |             "next_domain": null or string,
-    |             "next_transit_box": null or [[x0,y0],...,[x3,y3]]
+    |             "next_destination": [null] or [string],
+    |             "next_domain": [null] or [string],
+    |             "next_transit_box": [null] or [ [[x0,y0],...,[x3,y3]] ],
+    |             "next_transit_box_xshift": [0.0],
+    |             "next_transit_box_yshift": [0.0],
     |            },...
     |        ]
     |--------------------
@@ -138,47 +149,59 @@ with open(opt.jsonfilename) as json_file:
         Random seed which can be used to reproduce a random selection if >0
     Np_rooms: integer
         Number of persons per rooms
-    area : float
-    Nrooms
-    RoomNames
-    RoomInlets
-    DoorCenters
-    RoomCenters
-    DoorRoomCapacity
-    Nsecondes
+    area: float
+        for visualization...
+    CircAngles: list
+        for visualization (orientation): [0,0,-90,...]
+    RoomNames: list of strings
+        all the room names
+    Np_rooms: list
+        number of persons in each room
+    RoomInlets:
+        all the room links: [[1,2], [2,3,4],...]
+    "TravelTimeWeights": list 
+        weights for each way: [[1,1], [1,2,1],...]
+    DoorCenters:
+        coordinates of the door centers
+    RoomCenters:
+        coordinates of the room centers 
+    DoorRoomCapacity: list
+        all the door capacities (number of persons per minute)
+    Nseconds: int
+        final time in seconds
 """
 
-jdom = input["domain"]
-print("===> JSON data used to build the domain : ", jdom)
-prefix = input["prefix"]
+jdom = config["domain"]
+LOGGER.info(f"===> JSON data used to build the domain: {jdom}" )
+prefix = config["prefix"]
 if not os.path.exists(prefix):
     os.makedirs(prefix)
-seed = input["seed"]
-Np_rooms = input["Np_rooms"]
-area = input["area"]
-RoomNames = input["RoomNames"]
-Np_rooms = np.array(input["Np_rooms"])
-RoomInlets = input["RoomInlets"]
-TravelTimeWeights = input["TravelTimeWeights"]
-DoorCenters = np.array(input["DoorCenters"])
-RoomCenters = np.array(input["RoomCenters"])
-CircAngles = np.array(input["CircAngles"])
-DoorRoomCapacity = input["DoorRoomCapacity"]
-Nsecondes = input["Nsecondes"]
-print("===> Number of persons per rooms : ", Np_rooms)
+seed = config["seed"]
+Np_rooms = config["Np_rooms"]
+area = config["area"]
+RoomNames = config["RoomNames"]
+Np_rooms = np.array(config["Np_rooms"])
+RoomInlets = config["RoomInlets"]
+TravelTimeWeights = config["TravelTimeWeights"]
+DoorCenters = np.array(config["DoorCenters"])
+RoomCenters = np.array(config["RoomCenters"])
+CircAngles = np.array(config["CircAngles"])
+DoorRoomCapacity = config["DoorRoomCapacity"]
+Nseconds = config["Nseconds"]
+LOGGER.info(f"===> Number of persons per rooms: {Np_rooms}")
 Np = 0
 for n in Np_rooms:
     Np += n
-print("===> Number of persons : ", Np)
+LOGGER.info(f"===> Number of persons: {Np}")
 Nrooms = len(RoomNames)
-print("===> Number of rooms : ", Nrooms)
-print("===> Capacity of each exit door : ", DoorRoomCapacity)
+LOGGER.info(f"===> Number of rooms: {Nrooms}")
+LOGGER.info(f"===> Capacity of each exit door: {DoorRoomCapacity}")
 
 """
     Build the Domain objects
 """
 jname = jdom["name"]
-print("===> Build domain ", jname)
+LOGGER.info(f"===> Build domain: {jname}")
 jbg = jdom["background"]
 jpx = jdom["px"]
 jwidth = jdom["width"]
@@ -236,12 +259,12 @@ for j, dd in enumerate(jdom["destinations"]):
                        next_destination=dd["next_destination"],
                        next_domain=dd["next_domain"],
                        next_transit_box=dd["next_transit_box"])
-    print("===> Destination : ", dest)
+    LOGGER.info(f"===> Destination: {dest}")
     dom.add_destination(dest)
 
     dom.plot_desired_velocity(dd["name"], id=10+j, step=20)
 
-print("===> Domain : ", dom)
+LOGGER.info(f"===> Domain: {dom}")
 
 dom.plot(id=0)
 dom.plot_wall_dist(id=1, step=20)
@@ -254,14 +277,14 @@ Nior = []
 for ri in RoomInlets:
     NiorMax = max(NiorMax, len(ri))
     Nior.append(len(ri))
-print("===> Maximal number of inlets for a room : ", NiorMax)
-print("===> Number of inlets for each room : ", Nior)
+LOGGER.info(f"===> Maximal number of inlets for a room: {NiorMax}")
+LOGGER.info(f"===> Number of inlets for each room: {Nior}")
 
 # Room numbers associate to the inlets for each room
 List_iOr = np.zeros([Nrooms, NiorMax], dtype=int)
 for i, ri in enumerate(RoomInlets):
     List_iOr[i, :len(ri)] = ri
-# print("===> Room numbers associate to the inlets for each room",List_iOr)
+# LOGGER.info(f"===> Room numbers associate to the inlets for each room: {List_iOr}")
 
 # Compute travel times :
 T_iOr = np.zeros([Nrooms, NiorMax], dtype=int)
@@ -274,22 +297,22 @@ for ir in np.arange(Nrooms):
             dom.destinations["door"].distance.data[ij_entrance[1], ij_entrance[0]] -
             dom.destinations["door"].distance.data[ij_exit[1], ij_exit[0]])
         T_iOr[ir, i] = TravelTimeWeights[ir][i]*T_iOr[ir, i]
-print("Travel times : ", T_iOr)
+LOGGER.info(f"Travel times: {T_iOr}")
 
 NPrir = np.zeros([Nrooms, NiorMax])
 
 # Number of persons for each room
-NPir = np.zeros([Nsecondes, Nrooms])
+NPir = np.zeros([Nseconds, Nrooms])
 NPir[0, :] = Np_rooms
 
 # Number of persons who's waiting to leave each room
-NPwir = np.zeros([Nsecondes, Nrooms])
+NPwir = np.zeros([Nseconds, Nrooms])
 NPwir[0, :] = NPir[0, :]
 
 # Nrooms of persons upstream the exit
-Flux = np.zeros([Nsecondes, Nrooms])
+Flux = np.zeros([Nseconds, Nrooms])
 
-print("--> NPir at t=0 : ", NPir[0, :].sum())
+LOGGER.info(f"--> NPir at t=0: {NPir[0, :].sum()}")
 
 it = 0
 plot_compt(5, RoomNames, RoomCenters, DoorCenters, CircAngles, NPir[it, :],
@@ -297,15 +320,15 @@ plot_compt(5, RoomNames, RoomCenters, DoorCenters, CircAngles, NPir[it, :],
            filename=prefix+"fig_"+str(it).zfill(6)+".png",
            title='time = '+str(it)+' s')
 
-for it in np.arange(1, Nsecondes):
+for it in np.arange(1, Nseconds):
 
     Flux, NPir, NPwir, NPrir = iteration(it, Nrooms, DoorRoomCapacity, NPir, NPrir,
                                          NPwir, Nior, List_iOr, T_iOr, Flux)
-    print("---------> it = ", it)
-    # print("--> Flux : ", Flux)
-    print("--> NPir : ", NPir[it, :])
-    # print("--> NPwir : ",NPwir[it, :])
-    # print("--> NPrir : ",NPrir)
+    LOGGER.info(f"---------> it = {it}")
+    # LOGGER.info(f"--> Flux : ", Flux)
+    LOGGER.info(f"--> NPir : {NPir[it, :]}")
+    # LOGGER.info(f"--> NPwir : {NPwir[it, :]}")
+    # LOGGER.info(f"--> NPrir : {NPrir}")
     plot_compt(5, RoomNames, RoomCenters, DoorCenters, CircAngles, NPir[it, :],
                NPrir, NPwir[it, :], Nior, List_iOr, dom, area, savefig=True,
                filename=prefix+"fig_"+str(it).zfill(6)+".png",

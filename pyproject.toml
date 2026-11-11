@@ -1,0 +1,93 @@
+[build-system]
+requires = [
+  "scikit-build-core>=0.10",
+  "pybind11>=2.11",
+]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "cromosim"
+version = "3.1.0"
+description = "Crowd motion simulation library"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Sylvain Faure", email = "sylvain.faure@universite-paris-saclay.fr" },
+  { name = "Bertrand Maury", email = "bertrand.maury@universite-paris-saclay.fr" },
+]
+keywords = ["crowd", "simulation", "numerical methods"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Education",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+  "Operating System :: MacOS",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: C++",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
+  "Topic :: Scientific/Engineering :: Mathematics",
+]
+dependencies = [
+  "cvxopt",
+  "imageio",
+  "matplotlib",
+  "numpy",
+  "Pillow",
+  "scikit-fmm",
+  "scipy",
+  "vtk",
+  "pyvista",
+  "imageio-ffmpeg"
+]
+
+[project.optional-dependencies]
+docs = ["numpydoc", "sphinx"]
+test = ["pytest>=7"]
+
+[project.urls]
+Homepage = "https://www.cromosim.fr"
+Repository = "https://github.com/sylvain-faure/cromosim"
+
+[tool.scikit-build]
+cmake.version = ">=3.20"
+cmake.build-type = "Release"
+wheel.packages = ["cromosim"]
+wheel.exclude = [
+  "**/.DS_Store",
+  "cromosim/solvers/.github/**",
+  "cromosim/solvers/benchmarks/**",
+  "cromosim/solvers/build/**",
+  "cromosim/solvers/cmake/**",
+  "cromosim/solvers/include/**",
+  "cromosim/solvers/src/**",
+  "cromosim/solvers/tests/**",
+  "cromosim/solvers/CMakeLists.txt",
+  "cromosim/solvers/README.md",
+  "cromosim/solvers/*.npz",
+  "cromosim/solvers/minimizer_demo.py",
+]
+sdist.include = [
+  "CMakeLists.txt",
+  "benchmarks/**",
+  "cromosim/solvers/**",
+  "doc/**",
+  "examples/**",
+  "tests/**",
+]
+sdist.exclude = [
+  "**/.DS_Store",
+  "**/__MACOSX",
+  "**/__pycache__",
+  "cromosim/solvers/build/**",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -7,36 +7,34 @@
     "width":null,
     "height":null,
     "wall_colors":[ [0,0,0] ],
-    "shape_lines":[
-    ],
-    "shape_circles":[
-    ],
-    "shape_ellipses":[
-    ],
-    "shape_rectangles":[
-    ],
-    "shape_polygons":[
-    ],
+    "shape_lines":[],
+    "shape_circles":[],
+    "shape_ellipses":[],
+    "shape_rectangles":[],
+    "shape_polygons":[],
     "destinations":[
-      {
-        "name": "running_track",
-        "colors": [ [255,0,0] ],
-        "excluded_colors":[ [0,0,0],[0,255,0] ],
-        "desired_velocity_from_color":[
-          {
-            "color": [255,0,0],
-            "desired_velocity": [-1,0]
-          },
-          {
-            "color": [0,255,0],
-            "desired_velocity": [-1,0]
-          }
-        ],
-        "velocity_scale": 1,
-        "next_destination": null,
-        "next_domain": null,
-        "next_transit_box":null
-      }
+        {
+          "name": "running_track",
+          "colors": [ [255,0,0] ],
+          "excluded_colors":[ [0,0,0],[0,255,0] ],
+          "desired_velocity_from_color":[
+            {
+              "color": [255,0,0],
+              "desired_velocity": [-1,0]
+            },
+            {
+              "color": [0,255,0],
+              "desired_velocity": [-1,0]
+            }
+          ],
+          "velocity_scale": 1,
+          "next_destination":         ["running_track"], 
+          "next_domain":              ["stadium"], 
+          "next_destination_weights": [1.0], 
+          "next_transit_box":         [null], 
+          "next_transit_box_xshift":  [0.0], 
+          "next_transit_box_yshift":  [0.0]
+        }
     ]
   }
 }

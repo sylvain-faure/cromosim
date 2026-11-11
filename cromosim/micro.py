@@ -3,114 +3,155 @@
 #     Bertrand Maury <bertrand.maury@universite-paris-saclay.fr>
 # License: GPL
 
-import numpy as np
+"""Microscopic crowd-simulation utilities used by Cromosim.
+
+The module contains contact detection, force evaluation, velocity projection,
+pedestrian initialization and transfer helpers, sensor processing, and plotting
+utilities for the microscopic crowd model.
+
+"""
+
+import logging
 import sys
+
+import numpy as np
 import matplotlib.pyplot as plt
 
 # from scipy.spatial import KDTree
 from scipy.spatial import cKDTree
 from scipy.sparse import csr_matrix
+from scipy.sparse import spdiags
 from matplotlib.patches import Arrow
 from matplotlib.lines import Line2D
 from matplotlib.collections import EllipseCollection, LineCollection
 
 
+_LOGGER = logging.getLogger(__name__)
+
+PEOPLE_ARRAY_KEYS = (
+    "xyrv",
+    "Vd",
+    "U",
+    "Uold",
+    "destinations",
+    "frustration",
+    "with_frustration",
+    "beta",
+    "viewing_angle",
+    "mass",
+    "id",
+    "frustration_last_pos",
+    "frustration_memory",
+    "frustration_memory_times",
+)
+PEOPLE_LIST_KEYS = (
+)
+PEOPLE_DICT_KEYS = (
+    "paths",
+)
+
+
 def compute_contacts(dom, xyrv, dmax):
-    """This function uses a KDTree method to find the contacts between
-    individuals. Moreover the contacts with the walls are also determined
-    from the wall distance (obtained by the fast-marching method).
+    """Compute active pedestrian-pedestrian and pedestrian-wall contacts.
+
+    Pedestrian pairs are identified with a :class:`scipy.spatial.cKDTree`.
+    Wall contacts are obtained from the domain wall-distance field.
 
     Parameters
     ----------
-    dom: Domain
-        contains everything for managing the domain
-    xyrv: numpy array
-        people coordinates, radius and velocity coefficient: ``x,y,r,v``
-    dmax: float
-        threshold value used to consider a contact as active i.e. ``dij<dmax``
+    dom : Domain
+        Domain object providing wall distances and wall-distance gradients.
+    xyrv : numpy.ndarray, shape (n_people, 4)
+        Pedestrian state array with columns ``x``, ``y``, radius ``r`` and
+        velocity coefficient ``v``.
+    dmax : float
+        Maximum gap distance for an active contact. A contact is retained when
+        ``dij < dmax``.
 
     Returns
     -------
-    contacts: numpy array
-        all the contacts ``i,j,dij,eij_x,eij_y`` such that ``dij<dmax`` and
-        ``i<j`` (no duplication)
+    numpy.ndarray, shape (n_contacts, 5)
+        Contact rows ``(i, j, dij, eij_x, eij_y)``. Pedestrian-pedestrian
+        contacts satisfy ``i < j``. Wall contacts use ``j = -1``.
     """
-    # lf: the number of points at which the algorithm
-    # switches over to brute-force. Has to be positive.
-    lf = 100
-    if (lf > sys.getrecursionlimit()):
-        sys.setrecursionlimit(lf)
-    kd = cKDTree(xyrv[:, :2], leafsize=lf)
-    # Find all pairs of points whose distance is at most dmax+2*rmax
-    rmax = xyrv[:, 2].max()
-    neighbors = kd.query_ball_tree(kd, dmax+2*rmax)
-    # Create the contact array: i,j,dij,eij_x,eij_y
-    first_elements = np.arange(xyrv.shape[0])  # i
-    other_elements = list(map(lambda x: x[1:], neighbors))  # all j for each i
-    lengths = list(map(len, other_elements))
-    tt = np.stack([first_elements, lengths], axis=1)
-    II = np.concatenate(list(map(lambda x: np.full((x[1],), x[0]), tt))).astype(int)
-    JJ = np.concatenate(other_elements).astype(int)
-    ind = np.where(II < JJ)[0]
-    II = II[ind]
-    JJ = JJ[ind]
-    DP = xyrv[JJ, :2]-xyrv[II, :2]
-    Norm = np.linalg.norm(DP, axis=1, ord=2)
-    Dij = Norm - xyrv[II, 2]-xyrv[JJ, 2]
-    ind = np.where(Dij < dmax)[0]
-    Dij = Dij[ind]
-    II = II[ind]
-    JJ = JJ[ind]
-    Norm = Norm[ind]
-    DP = DP[ind]
-    contacts = np.stack([II, JJ, Dij, DP[:, 0]/Norm, DP[:, 1]/Norm], axis=1)
-    # Add contacts with the walls
-    II, JJ, DD = dom.people_wall_distance(xyrv)
-    ind = np.where(DD < dmax)[0]
-    wall_contacts = np.stack([ind, -1*np.ones(ind.shape), DD[ind],
-                              dom.wall_grad_X[II[ind], JJ[ind]],
-                              dom.wall_grad_Y[II[ind], JJ[ind]]], axis=1)
-    contacts = np.vstack([contacts, wall_contacts])
-    return np.array(contacts)
+    if xyrv.size>0:
+        # lf: the number of points at which the algorithm
+        # switches over to brute-force. Has to be positive.
+        lf = 100
+        if (lf > sys.getrecursionlimit()):
+            sys.setrecursionlimit(lf)
+        kd = cKDTree(xyrv[:, :2], leafsize=lf)
+        # Find all pairs of points whose distance is at most dmax+2*rmax
+        rmax = xyrv[:, 2].max()
+        neighbors = kd.query_ball_tree(kd, dmax+2*rmax)
+        # Create the contact array: i,j,dij,eij_x,eij_y
+        first_elements = np.arange(xyrv.shape[0])  # i
+        other_elements = list(map(lambda x: x[1:], neighbors))  # all j for each i
+        lengths = list(map(len, other_elements))
+        tt = np.stack([first_elements, lengths], axis=1)
+        II = np.concatenate(list(map(lambda x: np.full((x[1],), x[0]), tt))).astype(int)
+        JJ = np.concatenate(other_elements).astype(int)
+        ind = np.where(II < JJ)[0]
+        II = II[ind]
+        JJ = JJ[ind]
+        DP = xyrv[JJ, :2]-xyrv[II, :2]
+        Norm = np.linalg.norm(DP, axis=1, ord=2)
+        Dij = Norm - xyrv[II, 2]-xyrv[JJ, 2]
+        ind = np.where(Dij < dmax)[0]
+        Dij = Dij[ind]
+        II = II[ind]
+        JJ = JJ[ind]
+        Norm = Norm[ind]
+        DP = DP[ind]
+        contacts = np.stack([II, JJ, Dij, DP[:, 0]/Norm, DP[:, 1]/Norm], axis=1)
+        # Add contacts with the walls
+        II, JJ, DD = dom.people_wall_distance(xyrv)
+        ind = np.where(DD < dmax)[0]
+        wall_contacts = np.stack([ind, -1*np.ones(ind.shape), DD[ind],
+                                dom.wall_grad_X[II[ind], JJ[ind]],
+                                dom.wall_grad_Y[II[ind], JJ[ind]]], axis=1)
+        contacts = np.vstack([contacts, wall_contacts])
+        return np.array(contacts)
+    else:
+        return []
 
 
 def compute_forces(F, Fwall, xyrv, contacts, U, Vd, lambda_, delta, k, eta):
-    """This function computes all the forces (isentropic interaction and
-    friction) and sums them. The correcting pre-factor due to the vision
-    angle is also used into the social force term.
+    """Compute social, overlap and friction forces for all pedestrians.
+
+    The social-force contribution includes the directional weighting associated
+    with the pedestrian viewing direction. Overlap and tangential friction
+    forces are added for active contacts.
 
     Parameters
     ----------
-    F: float
-        social trend of an individual to keep apart from another (homogeneous
-        to a force)
-    Fwall: float
-        social trend of an individual to keep apart from a wall (homogeneous
-        to a force)
-    xyrv: numpy array
-        people coordinates, radius and velocity coefficient: ``x,y,r,v``
-    contacts: numpy array
-        all the contacts: ``i,j,dij,eij_x,eij_y``
-    U: numpy array
-        people velocities
-    Vd: numpy array
-        people desired velocities
-    lambda_: float
-        quantifies the directional dependence when the vision angle is
-        considered (between ``[0,1]``, if equal to 1 the fully isotropic case is
-        recovered)
-    delta: float
-        maintains a certain distance between neighbors
-    k: float
-        used when there is overlapping, k is a stiffness constant of
-        individuals seen as deformable bodies
-    eta: float
-        friction coefficient
+    F : float
+        Pedestrian-pedestrian social-force amplitude.
+    Fwall : float
+        Pedestrian-wall social-force amplitude.
+    xyrv : numpy.ndarray, shape (n_people, 4)
+        Pedestrian state array with columns ``x``, ``y``, radius ``r`` and
+        velocity coefficient ``v``.
+    contacts : numpy.ndarray, shape (n_contacts, 5)
+        Contact rows ``(i, j, dij, eij_x, eij_y)``.
+    U : numpy.ndarray, shape (n_people, 2)
+        Current pedestrian velocities.
+    Vd : numpy.ndarray, shape (n_people, 2)
+        Desired pedestrian velocities.
+    lambda_ : float
+        Directional-dependence coefficient in ``[0, 1]``. The value ``1``
+        gives an isotropic interaction.
+    delta : float
+        Characteristic interaction distance in the exponential social force.
+    k : float
+        Contact stiffness used when pedestrians overlap.
+    eta : float
+        Tangential friction coefficient.
 
     Returns
     -------
-    Forces: numpy array
-        sum of all forces for each individual
+    numpy.ndarray, shape (n_people, 2)
+        Total force applied to each pedestrian.
     """
     Np = xyrv.shape[0]
     Nc = contacts.shape[0]
@@ -127,13 +168,13 @@ def compute_forces(F, Fwall, xyrv, contacts, U, Vd, lambda_, delta, k, eta):
             # Angular dependence
             norm_Vdi = np.sqrt(Vd[i, 0]**2+Vd[i, 1]**2)
             if (norm_Vdi > 0):
-                theta_ij = np.arccos((Vd[i, 0]*eij_x+Vd[i, 1]*eij_y)/norm_Vdi)
+                theta_ij = np.arccos( max(-1.0, min(1.0, ( (Vd[i,0]*eij_x+Vd[i,1]*eij_y)/norm_Vdi ))))
                 omega_ij = lambda_+(1-lambda_)*(1+np.cos(theta_ij))/2
             else:
                 omega_ij = 1
             norm_Vdj = np.sqrt(Vd[j, 0]**2+Vd[j, 1]**2)
             if (norm_Vdj > 0):
-                theta_ji = np.arccos(-(Vd[j, 0]*eij_x+Vd[j, 1]*eij_y)/norm_Vdj)
+                theta_ji = np.arccos( max(-1.0, min(1.0, ( -(Vd[j,0]*eij_x+Vd[j,1]*eij_y)/norm_Vdj ))))
                 omega_ji = lambda_+(1-lambda_)*(1+np.cos(theta_ji))/2
             else:
                 omega_ji = 1
@@ -158,241 +199,479 @@ def compute_forces(F, Fwall, xyrv, contacts, U, Vd, lambda_, delta, k, eta):
     return Forces
 
 
-def projection(dt, xyrv, contacts, Vd, dmin_people=0, dmin_walls=0,
+def _build_contact_matrix(contacts, n_people):
+    """Build the sparse linearized non-overlap constraint matrix."""
+    ii = contacts[:, 0].astype(int)
+    jj = contacts[:, 1].astype(int)
+    person_contacts = np.where(jj >= 0)[0]
+    wall_contacts = np.where(jj < 0)[0]
+
+    row = np.concatenate([
+        person_contacts,
+        person_contacts,
+        person_contacts,
+        person_contacts,
+        wall_contacts,
+        wall_contacts,
+    ])
+    col = np.concatenate([
+        2 * ii[person_contacts],
+        2 * ii[person_contacts] + 1,
+        2 * jj[person_contacts],
+        2 * jj[person_contacts] + 1,
+        2 * ii[wall_contacts],
+        2 * ii[wall_contacts] + 1,
+    ])
+    data = np.concatenate([
+        contacts[person_contacts, 3],
+        contacts[person_contacts, 4],
+        -contacts[person_contacts, 3],
+        -contacts[person_contacts, 4],
+        -contacts[wall_contacts, 3],
+        -contacts[wall_contacts, 4],
+    ])
+    matrix = csr_matrix((data, (row, col)), shape=(contacts.shape[0], 2 * n_people))
+    return matrix, ii, jj, person_contacts, wall_contacts, row, col, data
+
+
+def _run_uzawa_projection(
+    dt,
+    xyrv,
+    contacts,
+    desired_velocity,
+    mass,
+    constraint_matrix,
+    dmin_people,
+    dmin_walls,
+    nb_iter_max,
+    rho,
+    tol,
+):
+    """Run the original Uzawa iteration used by :func:`projection`."""
+    n_people = xyrv.shape[0]
+    n_contacts = contacts.shape[0]
+
+    multipliers = np.zeros((n_contacts,))
+    residual = 99 * np.ones((n_contacts,))
+    velocity = np.zeros((2 * n_people,))
+    target_velocity = np.zeros((2 * n_people,))
+    distances = contacts[:, 2]
+    target_velocity[::2] = desired_velocity[:, 0]
+    target_velocity[1::2] = desired_velocity[:, 1]
+
+    iteration = 0
+    wall_contacts = np.where(contacts[:, 1] == -1)[0]
+    minimum_distance = np.ones(contacts.shape[0]) * dmin_people
+    minimum_distance[wall_contacts] = dmin_walls
+
+    mass_vector = np.zeros((2 * n_people,))
+    mass_vector[::2] = mass
+    mass_vector[1::2] = mass
+
+    while (
+        dt * residual.max() > tol * 2 * xyrv[:, 2].min()
+        and iteration < nb_iter_max
+    ):
+        velocity[:] = (
+            target_velocity[:]
+            - constraint_matrix.transpose() @ multipliers[:] / mass_vector
+        )
+        residual[:] = (
+            constraint_matrix @ velocity[:]
+            - (distances[:] - minimum_distance) / dt
+        )
+        multipliers[:] = np.maximum(multipliers[:] + rho * residual[:], 0)
+        iteration += 1
+
+    return velocity, multipliers, residual, iteration
+
+
+def projection(dt, xyrv, contacts, Vd, Mass, dmin_people=0, dmin_walls=0,
                nb_iter_max=100000, rho=0.1, tol=0.01, log=False, method="cvxopt"):
-    """From the desired velocities Vd, this projection step consists of
-    computing the global velocity field defined as the closest velocity to the
-    desired one among all the feasible fields (i.e. fields which do not lead 
-    to disks overlapping).
+    """Project desired velocities onto the non-overlapping feasible set.
+
+    The projection minimizes the mass-weighted distance to the desired velocity
+    under linearized non-overlap constraints. Several numerical solvers are
+    supported, including CVXOPT, MOSEK, Uzawa and the C++ Cromosim solvers.
 
     Parameters
     ----------
-    dt: float
-        time step
-    xyrv: numpy array
-        people coordinates, radius and velocity coefficient: ``x,y,r,v``
-    contacts: numpy array
-        all the contacts: ``i,j,dij,eij_x,eij_y``
-    Vd: numpy array
-        people desired velocities
-    dmin_people: float
-        minimum distance guaranteed between individuals
-    dmin_walls: float
-        minimum distance guaranteed between an individual and a wall
-    nb_iter_max: integer
-        maximum number of iterations allowed
-    rho: float
-        parameter of the Uzawa method
-    tol: float
-        tolerance wished
-    log: boolean
-        to print the final accuracy, number of iterations,...
-    method: string
-        optimization algorithm: ``"cvxopt"`` (default) or ``"uzawa"`` (or
-        ``"mosek"`` if installed with a license file).
+    dt : float
+        Time step.
+    xyrv : numpy.ndarray, shape (n_people, 4)
+        Pedestrian state array with columns ``x``, ``y``, radius ``r`` and
+        velocity coefficient ``v``.
+    contacts : numpy.ndarray, shape (n_contacts, 5)
+        Contact rows ``(i, j, dij, eij_x, eij_y)``.
+    Vd : numpy.ndarray, shape (n_people, 2)
+        Desired pedestrian velocities.
+    Mass : numpy.ndarray, shape (n_people,)
+        Pedestrian masses.
+    dmin_people : float, optional
+        Minimum pedestrian-pedestrian distance.
+    dmin_walls : float, optional
+        Minimum pedestrian-wall distance.
+    nb_iter_max : int, optional
+        Maximum number of iterations for iterative solvers.
+    rho : float, optional
+        Step parameter used by the Uzawa method.
+    tol : float, optional
+        Solver tolerance.
+    log : bool, optional
+        If ``True``, emit solver diagnostics.
+    method : str, optional
+        Solver name. Supported values are ``"cvxopt"``, ``"mosek"``,
+        ``"uzawa"``, ``"cppuzawa"``, ``"nesterov"`` and
+        ``"cppnesterov"``.
 
     Returns
     -------
-    info: integer
-        number of iterations needed
-    B: numpy array
-        constraint matrix
-    U: numpy array
-        new people velocities ensuring that there is no overlap between
-        individuals
-    L: numpy array
-        Lagrange multipliers (only when ``method="uzawa"``, None otherwise)
-    P: numpy array
-        pressure on each individual (only when ``method="uzawa"``, None
-        otherwise)
+    info : int
+        Solver information, typically the number of iterations. ``-1`` denotes
+        an iterative solver that reached its iteration limit.
+    B : scipy.sparse.csr_matrix or None
+        Contact-constraint matrix.
+    U : numpy.ndarray, shape (n_people, 2)
+        Projected pedestrian velocities.
+    L : numpy.ndarray or None
+        Contact Lagrange multipliers when available.
+    P : numpy.ndarray or None
+        Per-pedestrian pressure estimate when multipliers are available.
+    frustrations : numpy.ndarray, shape (n_people,)
+        Frustration measure in ``[0, 1]`` based on the loss of velocity in the
+        desired direction.
     """
     Np = xyrv.shape[0]
     Nc = contacts.shape[0]
     info = 0
-    if (Nc == 0):
+    L = None
+    P = None
+    B = None
+
+    if Nc == 0:
         info = 1
-        return info, None, Vd, None, None
-    else:
-        if (method == "cvxopt") or (method == "mosek"):
-            import cvxopt
-            cvxopt.solvers.options['show_progress'] = False
-            cvxopt.solvers.maxiters = 1000
-            cvxopt.solvers.abstol = 1e-8
-            cvxopt.solvers.reltol = 1e-7
-            L = None
-            P = None
-            U = np.zeros((2*Np,))
-            V = np.zeros((2*Np,))
-            ind_contacts_walls = np.where(contacts[:, 1] == -1)[0]
-            DMIN = np.ones(contacts.shape[0])*dmin_people
-            DMIN[ind_contacts_walls] = dmin_walls
-            Z = (contacts[:, 2]-DMIN)/dt  # ie Dij/dt
-            V[::2] = Vd[:, 0]  # A priori velocity
-            V[1::2] = Vd[:, 1]
-            V = cvxopt.matrix(V)
-            Z = cvxopt.matrix(Z, (Nc, 1))
-            Id = cvxopt.spdiag([1]*(U.shape[0]))
-            if (Nc > 0):
-                II = contacts[:, 0].astype(int)
-                JJ = contacts[:, 1].astype(int)
-                Jpos = np.where(JJ >= 0)[0]
-                Jneg = np.where(JJ < 0)[0]
-                row = np.concatenate([Jpos, Jpos, Jpos, Jpos, Jneg, Jneg])
-                col = np.concatenate([2*II[Jpos], 2*II[Jpos]+1,
-                                      2*JJ[Jpos], 2*JJ[Jpos]+1,
-                                      2*II[Jneg], 2*II[Jneg]+1])
-                data = np.concatenate([contacts[Jpos, 3], contacts[Jpos, 4],
-                                       -contacts[Jpos, 3], -contacts[Jpos, 4],
-                                       -contacts[Jneg, 3], -contacts[Jneg, 4]])
-                B = csr_matrix((data, (row, col)), shape=(Nc, 2*Np))  # .toarray()
-                cvxoptB = cvxopt.spmatrix(np.array(data), np.array(row),
-                                          np.array(col), size=(Nc, 2*Np))
-                if (method == "mosek"):
-                    from mosek import iparam
-                    cvxopt.solvers.options['mosek'] = {iparam.log: 0}
-                    solution = cvxopt.solvers.qp(Id, -V, cvxoptB, Z, solver='mosek')
-                else:
-                    solution = cvxopt.solvers.qp(Id, -V, cvxoptB, Z)
-                    info = solution["iterations"]
-                if log:
-                    C = Z - B@U
-                    if (method == "mosek"):
-                        print("    projection (mosek): nb of contacts = ", Nc,
-                              ", contrainte (Z-B@U).min() = ", C.min())
-                    else:
-                        print("    projection (cvxopt): nb of contacts = ", Nc,
-                              ", nb of iterations = ", solution["iterations"],
-                              ", status = ", solution["status"],
-                              ", contrainte (Z-B@U).min() = ", C.min())
-                if (solution["status"] == "optimal"):
-                    U = solution['x']
-                else:
-                    print("    projection (mosek or cvxopt): optimization failed")
-                    print("    ---> try with uzawa method...")
-                    info = 0
-                    II = contacts[:, 0].astype(int)
-                    JJ = contacts[:, 1].astype(int)
-                    Jpos = np.where(JJ >= 0)[0]
-                    Jneg = np.where(JJ < 0)[0]
-                    row = np.concatenate([Jpos, Jpos, Jpos, Jpos, Jneg, Jneg])
-                    col = np.concatenate([2*II[Jpos], 2*II[Jpos]+1,
-                                          2*JJ[Jpos], 2*JJ[Jpos]+1,
-                                          2*II[Jneg], 2*II[Jneg]+1])
-                    data = np.concatenate([contacts[Jpos, 3], contacts[Jpos, 4],
-                                           -contacts[Jpos, 3], -contacts[Jpos, 4],
-                                           -contacts[Jneg, 3], -contacts[Jneg, 4]])
-                    B = csr_matrix((data, (row, col)), shape=(Nc, 2*Np))
-                    L = np.zeros((Nc,))
-                    R = 99*np.ones((Nc,))
-                    U = np.zeros((2*Np,))
-                    V = np.zeros((2*Np,))
-                    D = contacts[:, 2]
-                    V[::2] = Vd[:, 0]
-                    V[1::2] = Vd[:, 1]
-                    k = 0
-                    ind_contacts_walls = np.where(contacts[:, 1] == -1)[0]
-                    DMIN = np.ones(contacts.shape[0])*dmin_people
-                    DMIN[ind_contacts_walls] = dmin_walls
-                    while ((dt*R.max() > tol*2*xyrv[:, 2].min()) and (k < nb_iter_max)):
-                        U[:] = V[:] - B.transpose()@L[:]
-                        R[:] = B@U[:] - (D[:]-DMIN)/dt
-                        L[:] = np.maximum(L[:] + rho*R[:], 0)
-                        k += 1
-                    if log:
-                        print("    projection (uzawa): nb of contacts = ", Nc,
-                              ", nb of iterations = ", k, ", min = ", R.min(),
-                              ", max = ", R.max(), ", tol = ", tol)
-                    if (k == nb_iter_max):
-                        print("** WARNING: Method projection **")
-                        print("** WARNING: you have reached the maximum number \
-                               of iterations,")
-                        print("** WARNING: it remains unsatisfied constraints \
-                               !! ")
-                        info = -1
-                    else:
-                        info = k
+        frustrations = np.zeros((Np,))
+        return info, None, Vd, L, P, frustrations
 
-            U = np.array(U).reshape((Np, 2))
+    B, II, JJ, Jpos, Jneg, row, col, data = _build_contact_matrix(contacts, Np)
 
-        elif (method == "uzawa"):
+    if method in ("cvxopt", "mosek"):
+        import cvxopt
 
-            info = 0
-            II = contacts[:, 0].astype(int)
-            JJ = contacts[:, 1].astype(int)
-            Jpos = np.where(JJ >= 0)[0]
-            Jneg = np.where(JJ < 0)[0]
-            row = np.concatenate([Jpos, Jpos, Jpos, Jpos, Jneg, Jneg])
-            col = np.concatenate([2*II[Jpos], 2*II[Jpos]+1,
-                                  2*JJ[Jpos], 2*JJ[Jpos]+1,
-                                  2*II[Jneg], 2*II[Jneg]+1])
-            data = np.concatenate([contacts[Jpos, 3], contacts[Jpos, 4],
-                                   -contacts[Jpos, 3], -contacts[Jpos, 4],
-                                   -contacts[Jneg, 3], -contacts[Jneg, 4]])
-            B = csr_matrix((data, (row, col)), shape=(Nc, 2*Np))  # .toarray()
-            L = np.zeros((Nc,))
-            R = 99*np.ones((Nc,))
-            U = np.zeros((2*Np,))
-            V = np.zeros((2*Np,))
-            D = contacts[:, 2]
-            V[::2] = Vd[:, 0]
-            V[1::2] = Vd[:, 1]
-            k = 0
-            ind_contacts_walls = np.where(contacts[:, 1] == -1)[0]
-            DMIN = np.ones(contacts.shape[0])*dmin_people
-            DMIN[ind_contacts_walls] = dmin_walls
-            while ((dt*R.max() > tol*2*xyrv[:, 2].min()) and (k < nb_iter_max)):
-                U[:] = V[:] - B.transpose()@L[:]
-                R[:] = B@U[:] - (D[:]-DMIN)/dt
-                L[:] = np.maximum(L[:] + rho*R[:], 0)
-                k += 1
-            P = np.zeros(Np)  # Pressure
-            P[II[Jpos]] += 3/(4*np.pi*xyrv[II[Jpos], 2]**2)*L[Jpos]
-            P[JJ[Jpos]] += 3/(4*np.pi*xyrv[JJ[Jpos], 2]**2)*L[Jpos]
-            P[II[Jneg]] += 3/(4*np.pi*xyrv[II[Jneg], 2]**2)*L[Jneg]
+        cvxopt.solvers.options["show_progress"] = False
+        cvxopt.solvers.options["maxiters"] = 1000
+        cvxopt.solvers.options["abstol"] = 1e-8
+        cvxopt.solvers.options["reltol"] = 1e-7
+
+        V = np.zeros((2 * Np,))
+        wall_contacts = np.where(contacts[:, 1] == -1)[0]
+        DMIN = np.ones(contacts.shape[0]) * dmin_people
+        DMIN[wall_contacts] = dmin_walls
+        Z = (contacts[:, 2] - DMIN) / dt
+        V[::2] = Vd[:, 0]
+        V[1::2] = Vd[:, 1]
+
+        V_cvx = cvxopt.matrix(V)
+        Z_cvx = cvxopt.matrix(Z, (Nc, 1))
+        M_cvx = cvxopt.spdiag(cvxopt.matrix(np.repeat(Mass, 2)))
+        cvxoptB = cvxopt.spmatrix(
+            np.array(data), np.array(row), np.array(col), size=(Nc, 2 * Np)
+        )
+
+        if method == "mosek":
+            from mosek import iparam
+
+            cvxopt.solvers.options["mosek"] = {iparam.log: 0}
+            solution = cvxopt.solvers.qp(
+                M_cvx, -M_cvx * V_cvx, cvxoptB, Z_cvx, solver="mosek"
+            )
+        else:
+            solution = cvxopt.solvers.qp(M_cvx, -M_cvx * V_cvx, cvxoptB, Z_cvx)
+            info = solution["iterations"]
+
+        if solution["status"] == "optimal":
+            U = np.asarray(solution["x"], dtype=np.float64)
             if log:
-                print("    projection (uzawa): nb of contacts = ", Nc,
-                      ", nb of iterations = ", k, ", min = ", R.min(),
-                      ", max = ", R.max(), ", tol = ", tol)
-            if (k == nb_iter_max):
-                print("** WARNING: Method projection **")
-                print("** WARNING: you have reached the maximum number \
-                       of iterations,")
-                print("** WARNING: it remains unsatisfied constraints !! ")
+                constraint_margin = np.asarray(Z_cvx - B @ U)
+                if method == "mosek":
+                    _LOGGER.info(
+                        "projection[%s]: contacts=%d, min(Z - B@U)=%.6e",
+                        method,
+                        Nc,
+                        float(constraint_margin.min()),
+                    )
+                else:
+                    _LOGGER.info(
+                        "projection[%s]: contacts=%d, iterations=%s, status=%s, "
+                        "min(Z - B@U)=%.6e",
+                        method,
+                        Nc,
+                        solution["iterations"],
+                        solution["status"],
+                        float(constraint_margin.min()),
+                    )
+        else:
+            _LOGGER.warning(
+                "projection[%s] failed with status=%s; falling back to Uzawa",
+                method,
+                solution["status"],
+            )
+            info = 0
+            U, L, R, k = _run_uzawa_projection(
+                dt,
+                xyrv,
+                contacts,
+                Vd,
+                Mass,
+                B,
+                dmin_people,
+                dmin_walls,
+                nb_iter_max,
+                rho,
+                tol,
+            )
+            if log:
+                _LOGGER.info(
+                    "projection[uzawa fallback]: contacts=%d, iterations=%d, "
+                    "residual_min=%.6e, residual_max=%.6e, tol=%.6e",
+                    Nc,
+                    k,
+                    float(R.min()),
+                    float(R.max()),
+                    tol,
+                )
+            if k == nb_iter_max:
+                _LOGGER.warning(
+                    "projection[uzawa fallback] reached the maximum number of "
+                    "iterations; some constraints remain unsatisfied"
+                )
                 info = -1
             else:
                 info = k
 
-        return info, B, U.reshape((Np, 2)), L, P
+    elif method == "uzawa":
+        U, L, R, k = _run_uzawa_projection(
+            dt,
+            xyrv,
+            contacts,
+            Vd,
+            Mass,
+            B,
+            dmin_people,
+            dmin_walls,
+            nb_iter_max,
+            rho,
+            tol,
+        )
+        if log:
+            _LOGGER.info(
+                "projection[uzawa]: contacts=%d, iterations=%d, "
+                "residual_min=%.6e, residual_max=%.6e, tol=%.6e",
+                Nc,
+                k,
+                float(R.min()),
+                float(R.max()),
+                tol,
+            )
+        if k == nb_iter_max:
+            _LOGGER.warning(
+                "projection[uzawa] reached the maximum number of iterations; "
+                "some constraints remain unsatisfied"
+            )
+            info = -1
+        else:
+            info = k
+
+    # elif method == "cppuzawa":
+    #     from cromosim.solvers import Minimizer
+
+    #     minimizer = Minimizer(
+    #         max_iterations=nb_iter_max,
+    #         tolerance=tol,
+    #         rho=rho,
+    #         time_step=dt,
+    #         minimum_people_distance=dmin_people,
+    #         minimum_wall_distance=dmin_walls,
+    #         nesterov=False,
+    #     )
+    #     threads = 4
+    #     minimizer.set_thread_count(threads)
+    #     U, P, L, info = minimizer.run(
+    #         xyrv.ravel().tolist(),
+    #         contacts.ravel().tolist(),
+    #         Vd.ravel().tolist(),
+    #         Mass.tolist(),
+    #     )
+    #     U = np.asarray(U, dtype=np.float64)
+    #     L = np.asarray(L, dtype=np.float64)
+    #     P = np.asarray(P, dtype=np.float64)
+
+    elif method == "nesterov":
+        B = -dt * B
+        L = np.zeros((Nc,))
+        R = 99 * np.ones((Nc,))
+        U = np.zeros((2 * Np,))
+        V = np.zeros((2 * Np,))
+        V[::2] = Vd[:, 0]
+        V[1::2] = Vd[:, 1]
+        D = contacts[:, 2]
+        k = 0
+        wall_contacts = np.where(contacts[:, 1] == -1)[0]
+        DMIN = np.ones((Nc,)) * dmin_people
+        DMIN[wall_contacts] = dmin_walls
+
+        mass_vector = np.zeros((2 * Np,))
+        mass_vector[::2] = Mass
+        mass_vector[1::2] = Mass
+        M = spdiags(
+            np.array([mass_vector]), np.array([0]), mass_vector.shape[0], mass_vector.shape[0]
+        ).tocsc()
+        Minv = spdiags(
+            np.array([1 / mass_vector]),
+            np.array([0]),
+            mass_vector.shape[0],
+            mass_vector.shape[0],
+        ).tocsc()
+
+        # g(L) = -0.5 * L.T @ A @ L - L.T @ C,
+        # where A = B @ Minv @ B.T and C = B @ V + (D - DMIN).
+        # The code below minimizes the opposite convex quadratic over L >= 0.
+        A = B @ Minv @ B.T
+        C = B @ V + (D - DMIN)
+
+        theta_old = 1
+        rho = 0.05
+        Lold = L.copy()
+        Y = Lold.copy()
+        Lchap = np.ones((Lold.shape[0],))
+        lip = np.linalg.norm(A @ (Lold - Lchap)) / np.linalg.norm(Lold - Lchap)
+        rho = 1 / lip
+
+        while k < nb_iter_max:
+            DG = A @ Y + C
+            L = np.maximum(Y - rho * DG, 0.0)
+            cccc = 0
+            lip_itermax = 10
+            while (
+                cccc < lip_itermax
+                and 0.5 * L.T @ A @ L + L.T @ C
+                >= 0.5 * Y.T @ A @ Y
+                + Y.T @ C
+                + DG.T @ (L - Y)
+                + 0.5 * lip * np.sum((L - Y) ** 2)
+            ):
+                lip = 2 * lip
+                rho = 1 / lip
+                L = np.maximum(Y - rho * DG, 0)
+                cccc += 1
+
+            delta = theta_old**2 * (theta_old**2 + 4)
+            theta = 0.5 * (-theta_old**2 + np.sqrt(delta))
+            beta = theta_old * (1 - theta_old) / (theta_old**2 + theta)
+            Y = L + beta * (L - Lold)
+            if DG.T @ (L - Lold) > 0:
+                Y = L.copy()
+                theta = 1.0
+            lip = 0.9 * lip
+            rho = 1 / lip
+            k += 1
+            Lold = L.copy()
+            theta_old = theta
+
+            R = np.array(-A @ L - C)
+            if R.max() <= tol * 2 * xyrv[:, 2].min():
+                break
+
+        U = V + Minv @ B.T @ L
+        info = k
+        if log:
+            _LOGGER.info(
+                "projection[nesterov]: contacts=%d, iterations=%d, "
+                "residual_min=%.6e, residual_max=%.6e, tol=%.6e",
+                Nc,
+                k,
+                float(R.min()),
+                float(R.max()),
+                tol,
+            )
+        if k == nb_iter_max:
+            _LOGGER.warning(
+                "projection[nesterov] reached the maximum number of iterations; "
+                "some constraints remain unsatisfied"
+            )
+            info = -1
+        else:
+            info = k
+
+    elif method == "cppnesterov":
+        from cromosim.solvers import Minimizer
+
+        minimizer = Minimizer(
+            max_iterations=nb_iter_max,
+            tolerance=tol,
+            rho=rho,
+            time_step=dt,
+            minimum_people_distance=dmin_people,
+            minimum_wall_distance=dmin_walls,
+            nesterov=True,
+        )
+        threads = 4
+        minimizer.set_thread_count(threads)
+        U, P, L, info = minimizer.run(
+            xyrv.ravel().tolist(),
+            contacts.ravel().tolist(),
+            Vd.ravel().tolist(),
+            Mass.tolist(),
+        )
+        U = np.asarray(U, dtype=np.float64)
+        L = np.asarray(L, dtype=np.float64)
+        P = np.asarray(P, dtype=np.float64)
+
+    UU = U.reshape((Np, 2))
+
+    # Frustration is 1 - <U_i, Vd_i> / <Vd_i, Vd_i>, clipped to [0, 1].
+    satisfactions = np.minimum(
+        np.maximum(
+            (Vd[:, 0] * UU[:, 0] + Vd[:, 1] * UU[:, 1])
+            / np.maximum(Vd[:, 0] ** 2 + Vd[:, 1] ** 2, 1.0e-8),
+            0.0,
+        ),
+        1.0,
+    )
+    frustrations = 1 - satisfactions
+
+    if L is not None:
+        # Pressure is estimated from one half of the stress trace in 2D.
+        P = np.zeros(Np)
+        P[II[Jpos]] += 1 / (2 * np.pi * xyrv[II[Jpos], 2]) * L[Jpos]
+        P[JJ[Jpos]] += 1 / (2 * np.pi * xyrv[JJ[Jpos], 2]) * L[Jpos]
+        P[II[Jneg]] += 1 / (2 * np.pi * xyrv[II[Jneg], 2]) * L[Jneg]
+
+    return info, B, UU, L, P, frustrations
 
 
 def move_people(time, dt, people, sensors):
-    """
-    Updates the people positions according to the new velocities U. \
-    If there exists crosslines (i.e. sensors), computes also the id, time, \
-    direction and impact points for the individuals who cross the lines.
+    """Advance pedestrian positions and update crossing sensors.
 
     Parameters
     ----------
-    time: float
-        current time
-    dt: float
-        time step
-    people: dict
-        dictionary containing everything related to individuals (``"xyrv"``, \
-        ``"U"``,...)
-    sensors: dict
-        dictionary containing everything related to sensors (``"line"``,...)
+    time : float
+        Current simulation time.
+    dt : float
+        Time step.
+    people : dict
+        Pedestrian data. The dictionary must contain at least ``"xyrv"``,
+        ``"U"`` and ``"id"``.
+    sensors : list of dict
+        Sensor definitions and accumulated sensor data.
 
     Returns
     -------
-    people: dict
-        dictionary updated with new people positions after moving
-    sensors: dict
-        dictionary enriched by:
-         * ``"id"``: people id who cross the sensor lines
-         * ``"times"``: times when people cross the sensor lines
-         * ``"xy"``: impact points for people crossing the sensor lines
-         * ``"dir"``: directions for people crossing the sensor lines (entry or exit)
+    people : dict
+        Updated pedestrian data after advancing positions by ``dt``.
+    sensors : list of dict
+        Updated sensors. Crossing identifiers, times, intersection points and
+        directions are appended to the corresponding sensor records.
     """
     if (len(sensors) > 0):
         xyrv_old = people["xyrv"].copy()
@@ -402,692 +681,1462 @@ def move_people(time, dt, people, sensors):
     for il, s in enumerate(sensors):
         ll = s["line"]
         # line [x0,y0,x1,y1],
-        id, pt, dir, times, entries, exits = sensor(ll, xyrv_old[:, :2],
-                                                    people["xyrv"][:, :2], time, time+dt)
-        sensors[il]["id"] = sensors[il]["id"] + people["id"][id].tolist()
+        dist_in = 5.0
+        dist_out = 5.0
+        id, pt, dir, times, entries, exits, id_people_in, id_people_out = sensor(ll, xyrv_old[:, :2],
+                                                    people["xyrv"][:, :2], 
+                                                    time, time+dt,
+                                                    sensors[il]["dist_in"], sensors[il]["dist_out"])
+        sensors[il]["id"]    = sensors[il]["id"] + people["id"][id].tolist()
         sensors[il]["times"] = sensors[il]["times"] + times.tolist()
-        sensors[il]["xy"] = sensors[il]["xy"] + pt.tolist()
-        sensors[il]["dir"] = sensors[il]["dir"] + dir.tolist()
+        sensors[il]["xy"]    = sensors[il]["xy"] + pt.tolist()
+        sensors[il]["dir"]   = sensors[il]["dir"] + dir.tolist()
+        sensors[il]["id_people_in"]  = id_people_in
+        sensors[il]["id_people_out"] = id_people_out
     return people, sensors
 
 
 def create_people_in_box(nn, box, dest_name, radius_distribution,
-                         velocity_distribution, dom, rng, verbose=True):
-    """
-    To create nn persons in a given box. The overlaps are not treated for \
-    the moment but one checks that the individuals are located in an area where \
-    the desired velocity is well defined (outside inaccessible areas or \
-    obstacles). If it is not the case, one changes their coordinates in \
-    consequence.
+                         velocity_distribution, viewing_angle_distribution,
+                         mass_distribution, dom, rng, log=True):
+    """Create pedestrians at random admissible positions inside a box.
+
+    Radii, velocity coefficients, viewing angles and masses are sampled from
+    the requested distributions. Positions are resampled until they belong to a
+    region where the selected destination is admissible. Overlaps between
+    pedestrians are not removed by this function.
 
     Parameters
     ----------
-    nn: integer
-        number of individuals to create
-    box: list
-        coordinates of the box ``[xmin, xmax, ymin, ymax]``
-    dest_name: string
-        destination name for all individuals in this group
-    radius_distribution: list
-        distribution with its parameters
-    velocity_distribution: list
-        distribution with its parameters
-    dom: Domain
-        contains everything for managing the domain
-    rng: RandomState
-        scipy random state object (see ``scipy.random.RandomState``)
-    verbose: boolean
-        logs for debug
+    nn : int
+        Number of pedestrians to create.
+    box : sequence of float
+        Bounding box ``[xmin, xmax, ymin, ymax]``.
+    dest_name : str
+        Initial destination assigned to every created pedestrian.
+    radius_distribution : sequence
+        Distribution specification ``["uniform", min, max]`` or
+        ``["normal", mean, std]`` for pedestrian radii.
+    velocity_distribution : sequence
+        Distribution specification for velocity coefficients.
+    viewing_angle_distribution : sequence
+        Distribution specification for half viewing angles, in degrees.
+    mass_distribution : sequence
+        Distribution specification for pedestrian masses.
+    dom : Domain
+        Domain object used to test destination admissibility.
+    rng : numpy.random.RandomState
+        Random-number generator.
+    log : bool, optional
+        If ``True``, emit initialization diagnostics.
 
     Returns
     -------
-    p: numpy array
-        new people coordinates, radius and velocity coefficient ``x y r v``
-    dest_names: numpy array
-        people destination names
+    xyrv : numpy.ndarray, shape (nn, 4)
+        New pedestrian states ``(x, y, r, v)``.
+    dest_names : list of str
+        Destination name for each pedestrian.
+    view : numpy.ndarray, shape (nn,)
+        Half viewing angle for each pedestrian, clipped to ``[0, 90]`` degrees.
+    mass : numpy.ndarray, shape (nn,)
+        Pedestrian masses.
     """
-    if (verbose):
-        print("------ create_people_in_box --> Create "+str(nn) +
-              " individuals in the box " + str(box) + ", overlaps can occur...")
-    xyrv = np.zeros((nn, 4))  # x y r v
-    dest_names = [dest_name]*nn
-    if (radius_distribution[0] == "uniform"):
+    if log:
+        _LOGGER.info(
+            "create_people_in_box: count=%d, box=%s; initial overlaps may occur",
+            nn,
+            box,
+        )
+
+    xyrv = np.zeros((nn, 4))  # columns: x, y, radius, velocity coefficient
+    dest_names = [dest_name] * nn
+
+    if radius_distribution[0] == "uniform":
         rmin = radius_distribution[1]
         rmax = radius_distribution[2]
         xyrv[:, 2] = rng.uniform(rmin, rmax, nn)
-    elif (radius_distribution[0] == "normal"):
+    elif radius_distribution[0] == "normal":
         mean = radius_distribution[1]
-        sigma = radius_distribution[2]  # standard deviation
-        xyrv[:, 2] = rng.normal(mean, sigma, nn)  # r: radius
+        sigma = radius_distribution[2]
+        xyrv[:, 2] = rng.normal(mean, sigma, nn)
     else:
-        print("------ create_people_in_box --> unknown distribution for people radius ")
+        _LOGGER.warning(
+            "create_people_in_box: unknown radius distribution %r",
+            radius_distribution[0],
+        )
     p_rmax = xyrv[:, 2].max()
-    if (velocity_distribution[0] == "uniform"):
+
+    if velocity_distribution[0] == "uniform":
         vmin = velocity_distribution[1]
         vmax = velocity_distribution[2]
-        xyrv[:, 3] = rng.uniform(vmin, vmax, nn)  # v: velocity coefficient
-    elif (velocity_distribution[0] == "normal"):
+        xyrv[:, 3] = rng.uniform(vmin, vmax, nn)
+    elif velocity_distribution[0] == "normal":
         mean = velocity_distribution[1]
-        sigma = velocity_distribution[2]  # standard deviation
-        xyrv[:, 3] = rng.normal(mean, sigma, nn)  # v: velocity coefficient
+        sigma = velocity_distribution[2]
+        xyrv[:, 3] = rng.normal(mean, sigma, nn)
     else:
-        print("------ create_people_in_box --> unknown distribution for \
-              people velocity")
+        _LOGGER.warning(
+            "create_people_in_box: unknown velocity distribution %r",
+            velocity_distribution[0],
+        )
+
+    if viewing_angle_distribution[0] == "uniform":
+        wmin = viewing_angle_distribution[1]
+        wmax = viewing_angle_distribution[2]
+        if wmax > 90:
+            _LOGGER.warning(
+                "create_people_in_box: viewing angle exceeds 90 degrees; "
+                "values are clipped to the valid half-angle range [0, 90]"
+            )
+        view = np.maximum(np.minimum(rng.uniform(wmin, wmax, nn), 90.0), 0.0)
+    elif viewing_angle_distribution[0] == "normal":
+        mean = viewing_angle_distribution[1]
+        sigma = viewing_angle_distribution[2]
+        view = rng.normal(mean, sigma, nn)
+        if view.max() > 90:
+            _LOGGER.warning(
+                "create_people_in_box: viewing angle exceeds 90 degrees; "
+                "values are clipped to the valid half-angle range [0, 90]"
+            )
+        view = np.maximum(np.minimum(view, 90.0), 0.0)
+    else:
+        _LOGGER.warning(
+            "create_people_in_box: unknown viewing-angle distribution %r",
+            viewing_angle_distribution[0],
+        )
+
+    if mass_distribution[0] == "uniform":
+        mass_min = mass_distribution[1]
+        mass_max = mass_distribution[2]
+        mass = rng.uniform(mass_min, mass_max, nn)
+    elif mass_distribution[0] == "normal":
+        mass_mean = mass_distribution[1]
+        mass_sigma = mass_distribution[2]
+        mass = rng.normal(mass_mean, mass_sigma, nn)
+    else:
+        _LOGGER.warning(
+            "create_people_in_box: unknown mass distribution %r",
+            mass_distribution[0],
+        )
+
     xmin, xmax, ymin, ymax = box
-    xyrv[:, 0] = rng.uniform(xmin+p_rmax, xmax-p_rmax, nn)
-    xyrv[:, 1] = rng.uniform(ymin+p_rmax, ymax-p_rmax, nn)
-    # To check if people are well localized in the domain
-    # i.e. where a desired velocity is defined
+    xyrv[:, 0] = rng.uniform(xmin + p_rmax, xmax - p_rmax, nn)
+    xyrv[:, 1] = rng.uniform(ymin + p_rmax, ymax - p_rmax, nn)
+
+    # Resample positions located in destination-specific exclusion zones.
     while True:
-        II, JJ, Vd = dom.people_desired_velocity(xyrv, dest_names)
-        normVd = Vd[:, 0]**2+Vd[:, 1]**2
-        ind = np.where(normVd == 0)[0]
-        if (ind.shape[0] > 0):
-            xyrv[ind, 0] = rng.uniform(xmin+p_rmax, xmax-p_rmax, ind.shape[0])
-            xyrv[ind, 1] = rng.uniform(ymin+p_rmax, ymax-p_rmax, ind.shape[0])
-        else:
+        II, JJ, _ = dom.people_desired_velocity(xyrv, dest_names)
+        invalid = np.where(dom.destinations[dest_name].excluded_id[II, JJ] > 0)[0]
+        if invalid.shape[0] == 0:
             break
-    return xyrv, dest_names
+        xyrv[invalid, 0] = rng.uniform(
+            xmin + p_rmax, xmax - p_rmax, invalid.shape[0]
+        )
+        xyrv[invalid, 1] = rng.uniform(
+            ymin + p_rmax, ymax - p_rmax, invalid.shape[0]
+        )
+
+    return xyrv, dest_names, view, mass
 
 
-def check_people_in_box(dom, box, xyrv, dest_names, rng, verbose=True):
-    """To check that people coordinates are in the given box (test 1) and in an
-    usable space i.e. in an area accessible and not concerned by obstacles
-    (test 2). On the other hand, one moves the individuals which do not satisfy
-    these two tests.
+def create_people_at_positions(nn, rgb_color, dest_name, radius_distribution,
+                               velocity_distribution, viewing_angle_distribution,
+                               mass_distribution, dom, rng, log=True):
+    """Create pedestrians at positions encoded by an RGB map color.
+
+    Pixels matching ``rgb_color`` define the available positions. If more
+    positions than pedestrians are available, a random subset is selected.
 
     Parameters
     ----------
-    dom: Domain
-        contains everything for managing the domain
-    box: list
-        coordinates of the box [xmin, xmax, ymin, ymax]
-    xyrv: numpy array
-        people coordinates, radius and velocity coefficient: ``x,y,r,v``
-    dest_names: numpy array
-        people destination names
-    rng: RandomState
-        scipy random state object (see scipy.random.RandomState)
-    verbose: boolean
-        logs for debug
+    nn : int
+        Number of pedestrians to create.
+    rgb_color : sequence of int
+        RGB triplet identifying admissible pixels in the domain image.
+    dest_name : str
+        Initial destination assigned to every created pedestrian.
+    radius_distribution : sequence
+        Distribution specification ``["uniform", min, max]`` or
+        ``["normal", mean, std]`` for pedestrian radii.
+    velocity_distribution : sequence
+        Distribution specification for velocity coefficients.
+    viewing_angle_distribution : sequence
+        Distribution specification for half viewing angles, in degrees.
+    mass_distribution : sequence
+        Distribution specification for pedestrian masses.
+    dom : Domain
+        Domain containing the RGB image and geometric metadata.
+    rng : numpy.random.RandomState
+        Random-number generator.
+    log : bool, optional
+        If ``True``, emit initialization diagnostics.
 
     Returns
     -------
-    xyrv: numpy array
-        new people coordinates ``x y r``
-
+    xyrv : numpy.ndarray, shape (nn, 4)
+        New pedestrian states ``(x, y, r, v)``.
+    dest_names : list of str
+        Destination name for each pedestrian.
+    view : numpy.ndarray, shape (nn,)
+        Half viewing angle for each pedestrian, clipped to ``[0, 90]`` degrees.
+    mass : numpy.ndarray, shape (nn,)
+        Pedestrian masses.
     """
-    if (verbose):
-        print("------ check_people_in_box --> To verify that " + str(xyrv.shape[0]) +
-              " individuals are in the domain, in the box and with a defined" +
-              " desired velocity")
+    if log:
+        _LOGGER.info(
+            "create_people_at_positions: count=%d, rgb_color=%s",
+            nn,
+            rgb_color,
+        )
+
+    xyrv = np.zeros((nn, 4))  # columns: x, y, radius, velocity coefficient
+    dest_names = [dest_name] * nn
+
+    if radius_distribution[0] == "uniform":
+        rmin = radius_distribution[1]
+        rmax = radius_distribution[2]
+        xyrv[:, 2] = rng.uniform(rmin, rmax, nn)
+    elif radius_distribution[0] == "normal":
+        mean = radius_distribution[1]
+        sigma = radius_distribution[2]
+        xyrv[:, 2] = rng.normal(mean, sigma, nn)
+    else:
+        _LOGGER.warning(
+            "create_people_at_positions: unknown radius distribution %r",
+            radius_distribution[0],
+        )
+
+    if velocity_distribution[0] == "uniform":
+        vmin = velocity_distribution[1]
+        vmax = velocity_distribution[2]
+        xyrv[:, 3] = rng.uniform(vmin, vmax, nn)
+    elif velocity_distribution[0] == "normal":
+        mean = velocity_distribution[1]
+        sigma = velocity_distribution[2]
+        xyrv[:, 3] = rng.normal(mean, sigma, nn)
+    else:
+        _LOGGER.warning(
+            "create_people_at_positions: unknown velocity distribution %r",
+            velocity_distribution[0],
+        )
+
+    if viewing_angle_distribution[0] == "uniform":
+        wmin = viewing_angle_distribution[1]
+        wmax = viewing_angle_distribution[2]
+        if wmax > 90:
+            _LOGGER.warning(
+                "create_people_at_positions: viewing angle exceeds 90 degrees; "
+                "values are clipped to the valid half-angle range [0, 90]"
+            )
+        view = np.maximum(np.minimum(rng.uniform(wmin, wmax, nn), 90.0), 0.0)
+    elif viewing_angle_distribution[0] == "normal":
+        mean = viewing_angle_distribution[1]
+        sigma = viewing_angle_distribution[2]
+        view = rng.normal(mean, sigma, nn)
+        if view.max() > 90:
+            _LOGGER.warning(
+                "create_people_at_positions: viewing angle exceeds 90 degrees; "
+                "values are clipped to the valid half-angle range [0, 90]"
+            )
+        view = np.maximum(np.minimum(view, 90.0), 0.0)
+    else:
+        _LOGGER.warning(
+            "create_people_at_positions: unknown viewing-angle distribution %r",
+            viewing_angle_distribution[0],
+        )
+
+    if mass_distribution[0] == "uniform":
+        mass_min = mass_distribution[1]
+        mass_max = mass_distribution[2]
+        mass = rng.uniform(mass_min, mass_max, nn)
+    elif mass_distribution[0] == "normal":
+        mass_mean = mass_distribution[1]
+        mass_sigma = mass_distribution[2]
+        mass = rng.normal(mass_mean, mass_sigma, nn)
+    else:
+        _LOGGER.warning(
+            "create_people_at_positions: unknown mass distribution %r",
+            mass_distribution[0],
+        )
+
+    positions_mask = (
+        (dom.image_red == rgb_color[0])
+        * (dom.image_green == rgb_color[1])
+        * (dom.image_blue == rgb_color[2])
+    )
+    mask_id = np.where(positions_mask >= 1)
+    if nn > mask_id[0].size:
+        raise ValueError(
+            "create_people_at_positions: too many pedestrians for the number "
+            "of available colored pixels"
+        )
+
+    if nn != mask_id[0].size:
+        indices = np.arange(mask_id[0].size)
+        rng.shuffle(indices)
+        mask_id = (mask_id[0][indices[:nn]], mask_id[1][indices[:nn]])
+
+    xyrv[:, 0] = dom.ymin + dom.pixel_size * mask_id[1]
+    xyrv[:, 1] = dom.xmin + dom.pixel_size * mask_id[0]
+
+    return xyrv, dest_names, view, mass
+
+
+def check_people_in_box(dom, box, xyrv, dest_names, rng, log=True):
+    """Relocate pedestrians that are outside a box or an admissible region.
+
+    The function repeatedly resamples invalid positions until every pedestrian
+    lies inside the computational domain, inside ``box`` and outside destination
+    exclusion zones.
+
+    Parameters
+    ----------
+    dom : Domain
+        Domain object used for geometry and destination checks.
+    box : sequence of float
+        Bounding box ``[xmin, xmax, ymin, ymax]``.
+    xyrv : numpy.ndarray, shape (n_people, 4)
+        Pedestrian state array.
+    dest_names : sequence of str
+        Destination name for each pedestrian.
+    rng : numpy.random.RandomState
+        Random-number generator.
+    log : bool, optional
+        If ``True``, emit relocation diagnostics.
+
+    Returns
+    -------
+    info : bool
+        ``True`` if at least one pedestrian had to be relocated, otherwise
+        ``False``.
+    xyrv : numpy.ndarray
+        Updated pedestrian states. The input array is modified in place.
+    """
+    if log:
+        _LOGGER.info(
+            "check_people_in_box: checking %d pedestrians in box %s",
+            xyrv.shape[0],
+            box,
+        )
+
     p_rmax = xyrv[:, 2].max()
     xmin, xmax, ymin, ymax = box
     info = False
+
     while True:
-        # test 1
-        II = np.floor((xyrv[:, 1]-dom.ymin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
-        JJ = np.floor((xyrv[:, 0]-dom.xmin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
-        test1 = (II >= 0)*(II < dom.height)*(JJ >= 0)*(JJ < dom.width)
+        # Test 1: positions must map to valid domain pixels.
+        II = np.floor(
+            (xyrv[:, 1] - dom.ymin - 0.5 * dom.pixel_size) / dom.pixel_size
+        ).astype(int)
+        JJ = np.floor(
+            (xyrv[:, 0] - dom.xmin - 0.5 * dom.pixel_size) / dom.pixel_size
+        ).astype(int)
+        test1 = (II >= 0) * (II < dom.height) * (JJ >= 0) * (JJ < dom.width)
         ind1 = np.where(test1 == 0)[0]
-        if (ind1.shape[0] > 0):
-            if (verbose):
-                print("------ check_people_in_box --> " + str(ind1.shape[0]) +
-                      " individuals outside the domain")
+        if ind1.shape[0] > 0:
+            if log:
+                _LOGGER.info(
+                    "check_people_in_box: relocating %d pedestrians outside the domain",
+                    ind1.shape[0],
+                )
             info = True
-            xyrv[ind1, 0] = rng.uniform(xmin+p_rmax, xmax-p_rmax, ind1.shape[0])
-            xyrv[ind1, 1] = rng.uniform(ymin+p_rmax, ymax-p_rmax, ind1.shape[0])
-        else:
-            # test 2
-            II, JJ, Vd = dom.people_desired_velocity(xyrv, dest_names)
-            normVd = Vd[:, 0]**2+Vd[:, 1]**2
-            test2 = (xyrv[:, 0] > xmin+p_rmax)*(xyrv[:, 0] < xmax-p_rmax) *\
-                (xyrv[:, 1] > ymin+p_rmax)*(xyrv[:, 1] < ymax-p_rmax)*(normVd > 0)
-            ind2 = np.where(test2 == 0)[0]
-            if (ind2.shape[0] > 0):
-                if (verbose):
-                    print("------ check_people_in_box --> " + str(ind2.shape[0]) +
-                          " individuals with an undefined desired velocity ")
-                info = True
-                xyrv[ind2, 0] = rng.uniform(xmin+p_rmax, xmax-p_rmax, ind2.shape[0])
-                xyrv[ind2, 1] = rng.uniform(ymin+p_rmax, ymax-p_rmax, ind2.shape[0])
-            else:
-                if (verbose):
-                    print("------ check_people_in_box --> OK !")
-                break
+            xyrv[ind1, 0] = rng.uniform(
+                xmin + p_rmax, xmax - p_rmax, ind1.shape[0]
+            )
+            xyrv[ind1, 1] = rng.uniform(
+                ymin + p_rmax, ymax - p_rmax, ind1.shape[0]
+            )
+            continue
+
+        # Test 2: positions must remain inside the requested box and have a
+        # non-zero desired velocity.
+        II, JJ, Vd = dom.people_desired_velocity(xyrv, dest_names)
+        normVd = Vd[:, 0] ** 2 + Vd[:, 1] ** 2
+        test2 = (
+            (xyrv[:, 0] > xmin + p_rmax)
+            * (xyrv[:, 0] < xmax - p_rmax)
+            * (xyrv[:, 1] > ymin + p_rmax)
+            * (xyrv[:, 1] < ymax - p_rmax)
+            * (normVd > 0)
+        )
+        ind2 = np.where(test2 == 0)[0]
+        if ind2.shape[0] > 0:
+            if log:
+                _LOGGER.info(
+                    "check_people_in_box: relocating %d pedestrians with an "
+                    "undefined desired velocity or outside the box",
+                    ind2.shape[0],
+                )
+            info = True
+            xyrv[ind2, 0] = rng.uniform(
+                xmin + p_rmax, xmax - p_rmax, ind2.shape[0]
+            )
+            xyrv[ind2, 1] = rng.uniform(
+                ymin + p_rmax, ymax - p_rmax, ind2.shape[0]
+            )
+            continue
+
+        # Test 3: destination-specific exclusion zones must be avoided.
+        II, JJ, _ = dom.people_desired_velocity(xyrv, dest_names)
+        ind3 = np.array([], dtype=int)
+        destination_array = np.asarray(dest_names)
+        for dest in np.unique(dest_names):
+            ind_p = np.where(destination_array == dest)[0]
+            ind_p_pb = np.where(
+                dom.destinations[dest].excluded_id[II[ind_p], JJ[ind_p]] > 0
+            )[0]
+            ind3 = np.concatenate((ind3, ind_p[ind_p_pb]))
+
+        if ind3.shape[0] > 0:
+            if log:
+                _LOGGER.info(
+                    "check_people_in_box: relocating %d pedestrians located in "
+                    "destination exclusion zones",
+                    ind3.shape[0],
+                )
+            info = True
+            xyrv[ind3, 0] = rng.uniform(
+                xmin + p_rmax, xmax - p_rmax, ind3.shape[0]
+            )
+            xyrv[ind3, 1] = rng.uniform(
+                ymin + p_rmax, ymax - p_rmax, ind3.shape[0]
+            )
+            continue
+
+        if log:
+            _LOGGER.info("check_people_in_box: all positions are admissible")
+        break
+
     return info, xyrv
 
 
-def remove_overlaps_in_box(dom, box, xyrv, dest_names, dt, rng,
-                           projection_method="cvxopt", dmin_people=0, dmin_walls=0, itermax=10,
-                           verbose=True):
-    """
-    To remove the overlaps between individuals (spheres) in the given box. \
-    Several projections are used to give a better robustness to this \
-    process when the number of overlaps is very high e.g. during the \
-    initialization when the individuals have random positions.
+def remove_overlaps_in_box(dom, box, xyrv, dest_names, mass, dt, rng,
+                           projection_method="cvxopt", dmin_people=0,
+                           dmin_walls=0, itermax=10, log=True):
+    """Iteratively remove pedestrian overlaps inside a bounding box.
+
+    Repeated velocity projections are used to separate overlapping pedestrians.
+    After each projection, positions are checked and invalid positions are
+    resampled inside the requested box.
 
     Parameters
     ----------
-    dom: Domain
-        contains everything for managing the domain
-    box: list
-        coordinates of the box ``[xmin, xmax, ymin, ymax]``
-    xyrv: numpy array
-        people coordinates ``x y``, radius ``r`` and velocity coefficient ``v``
-    dest_names: numpy array
-        people destination names
-    dt: float
-        time step
-    rng: RandomState
-        scipy random state object (see ``scipy.random.RandomState``)
-    dmin_people: float
-        minimal distance allowed between individuals
-    dmin_walls: float
-        minimal distance allowed between an individual and a wall
-    itermax: integer
-        maximal number of Uzawa projections (10 by default)
-    verbose: boolean
-        logs for debug
+    dom : Domain
+        Domain object.
+    box : sequence of float
+        Bounding box ``[xmin, xmax, ymin, ymax]``.
+    xyrv : numpy.ndarray, shape (n_people, 4)
+        Pedestrian states. Positions are modified in place.
+    dest_names : sequence of str
+        Destination name for each pedestrian.
+    mass : numpy.ndarray, shape (n_people,)
+        Pedestrian masses.
+    dt : float
+        Time step used by the projection.
+    rng : numpy.random.RandomState
+        Random-number generator.
+    projection_method : str, optional
+        Projection solver passed to :func:`projection`.
+    dmin_people : float, optional
+        Minimum pedestrian-pedestrian distance.
+    dmin_walls : float, optional
+        Minimum pedestrian-wall distance.
+    itermax : int, optional
+        Maximum number of outer overlap-removal iterations.
+    log : bool, optional
+        If ``True``, emit progress diagnostics.
 
     Returns
     -------
-    xyrv: numpy array
-        new people coordinates ``x y``, same radius ``r`` and velocity
-        coefficient ``v``
+    numpy.ndarray
+        Updated pedestrian states.
     """
-    if (verbose):
-        print("------ remove_overlaps_in_box --> Remove overlaps...")
-    dmax_init = xyrv[:, 2].max()  # maximal radius
-    it1 = 0
-    while (True):
-        if (verbose):
-            print("------ remove_overlaps_in_box --> Remove overlaps in box " +
-                  str(box) + ": iteration " + str(it1) + " / " + str(itermax))
-        c = compute_contacts(dom, xyrv, dmax_init)
-        II, JJ, Vd = dom.people_desired_velocity(xyrv, dest_names)
-        info1, B, U, L, P = projection(dt, xyrv, c, Vd,
-                                       method=projection_method,
-                                       dmin_people=dmin_people,
-                                       dmin_walls=dmin_walls,
-                                       nb_iter_max=10000, log=False)
-        # Move people
-        xyrv[:, 0] += dt*U[:, 0]
-        xyrv[:, 1] += dt*U[:, 1]
+    if log:
+        _LOGGER.info(
+            "remove_overlaps_in_box: starting overlap removal for %d pedestrians",
+            xyrv.shape[0],
+        )
 
-        it1 += 1
-        info2, people = check_people_in_box(dom, box, xyrv, dest_names,
-                                            rng, verbose=verbose)
-        if ((info1 >= 0) and (info2 is False)):
-            if (verbose):
-                print("------ remove_overlaps_in_box --> Successful... \
-                      No overlaps")
+    dmax_init = xyrv[:, 2].max()
+    iteration = 0
+
+    while True:
+        if log:
+            _LOGGER.info(
+                "remove_overlaps_in_box: box=%s, iteration=%d/%d",
+                box,
+                iteration,
+                itermax,
+            )
+
+        contacts = compute_contacts(dom, xyrv, dmax_init)
+        _, _, desired_velocity = dom.people_desired_velocity(xyrv, dest_names)
+        info_projection, _, velocity, _, _, _ = projection(
+            dt,
+            xyrv,
+            contacts,
+            desired_velocity,
+            mass,
+            method=projection_method,
+            dmin_people=dmin_people,
+            dmin_walls=dmin_walls,
+            nb_iter_max=10000,
+            log=False,
+        )
+
+        xyrv[:, 0] += dt * velocity[:, 0]
+        xyrv[:, 1] += dt * velocity[:, 1]
+
+        iteration += 1
+        positions_changed, xyrv = check_people_in_box(
+            dom, box, xyrv, dest_names, rng, log=log
+        )
+
+        if info_projection >= 0 and positions_changed is False:
+            if log:
+                _LOGGER.info(
+                    "remove_overlaps_in_box: completed successfully after %d iterations",
+                    iteration,
+                )
             break
-        if (it1 >= itermax):
-            if (verbose):
-                print("------ remove_overlaps_in_box --> ** WARNING: \
-                      Unsuccessful initialization **")
-                print("------ remove_overlaps_in_box --> ** WARNING: Let us \
-                      continue...")
+
+        if iteration >= itermax:
+            _LOGGER.warning(
+                "remove_overlaps_in_box: initialization stopped after %d iterations; "
+                "some overlaps or invalid positions may remain",
+                itermax,
+            )
             break
+
     return xyrv
 
 
-def people_initialization(dom, groups, dt, dmin_people=0, dmin_walls=0,
-                          seed=0, itermax=10, projection_method="cvxopt", verbose=True):
-    """To initialize people.
+def _create_people_for_group(
+    nn,
+    group,
+    dom,
+    dt,
+    rng,
+    dmin_people,
+    dmin_walls,
+    itermax,
+    projection_method,
+    log,
+):
+    """Create one population group using its box or RGB-position definition."""
+    box = group["box"]
+    color = group["color_for_positions"]
+
+    if len(box) == 4 and len(color) == 0:
+        if log:
+            _LOGGER.info(
+                "population initialization: count=%d, placement=box, box=%s",
+                nn,
+                box,
+            )
+        people, destinations, viewing_angles, masses = create_people_in_box(
+            nn,
+            box,
+            group["destination"],
+            group["radius_distribution"],
+            group["velocity_distribution"],
+            group["viewing_angle_distribution"],
+            group["mass_distribution"],
+            dom,
+            rng,
+            log=log,
+        )
+        people = remove_overlaps_in_box(
+            dom,
+            box,
+            people,
+            destinations,
+            masses,
+            dt,
+            rng,
+            dmin_people=dmin_people,
+            dmin_walls=dmin_walls,
+            itermax=itermax,
+            projection_method=projection_method,
+            log=log,
+        )
+        return people, destinations, viewing_angles, masses
+
+    if len(box) == 0 and len(color) == 3:
+        if log:
+            _LOGGER.info(
+                "population initialization: count=%d, placement=rgb, color=%s",
+                nn,
+                color,
+            )
+        return create_people_at_positions(
+            nn,
+            color,
+            group["destination"],
+            group["radius_distribution"],
+            group["velocity_distribution"],
+            group["viewing_angle_distribution"],
+            group["mass_distribution"],
+            dom,
+            rng,
+            log=log,
+        )
+
+    raise ValueError(
+        "A population group must define either a four-value 'box' or a "
+        "three-value 'color_for_positions', but not both."
+    )
+
+
+def add_people_flows(dom, groups, dt, dmin_people=0, dmin_walls=0, rng=None,
+                     itermax=10, projection_method="cvxopt",
+                     flow_duration=0.0, seed=0, frustration_memory_size=10,
+                     log=True):
+    """Create pedestrians generated by time-dependent population flows.
+
+    Each group marked with ``"flux_per_minute"`` accumulates a fractional flow.
+    Whenever the accumulated value exceeds one pedestrian, the corresponding
+    integer number of pedestrians is created and the fractional remainder is
+    kept in ``groups[...]["flux"]`` for the next call.
 
     Parameters
     ----------
-    dom: Domain
-        contains everything for managing the domain
-    groups: dict
-        contains all groups related to this domain. A group contains:
-         * ``"nb"``: number of persons
-         * ``"radius_distribution"``: ``["uniform",min,max]`` or ``["normal",mean,std_dev]``
-         * ``"velocity_distribution"``: ``["uniform",min,max]`` or ``["normal",mean,std_dev]``
-         * ``"box"``: ``[xmin,xmax,ymin,ymax]``
-         * ``"destination"``: initial destination
-    dt: float
-        time step
-    dmin_people: float
-        minimal distance allowed between individuals (0 by default)
-    dmin_walls: float
-        minimal distance allowed between an individual and a wall
-    seed: integer
-        seed to initialize the RandomState (0 by default means different seed \
-        at each run)
-    itermax: integer
-        maximal number of Uzawa projections (10 by default)
-    projection_method: string
-        optimizer name for the projection step: ``"cvxopt"``, ``"uzawa"``
-        or ``"mosek"``
-    verbose: boolean
-        logs for debug
+    dom : Domain
+        Domain in which pedestrians are created.
+    groups : sequence of dict
+        Population-group definitions.
+    dt : float
+        Simulation time step.
+    dmin_people : float, optional
+        Minimum pedestrian-pedestrian distance during initialization.
+    dmin_walls : float, optional
+        Minimum pedestrian-wall distance during initialization.
+    rng : numpy.random.RandomState or None, optional
+        Random-number generator. A new generator is created when ``None``.
+    itermax : int, optional
+        Maximum number of overlap-removal iterations.
+    projection_method : str, optional
+        Projection solver used while removing overlaps.
+    flow_duration : float, optional
+        Duration, in seconds, represented by the current flow update.
+    seed : int, optional
+        Seed used only when a new random generator is created. ``0`` requests a
+        non-deterministic seed.
+    frustration_memory_size : int, optional
+        Number of entries allocated for frustration history.
+    log : bool, optional
+        If ``True``, emit flow-initialization diagnostics.
 
     Returns
     -------
-    people: dict
-        people dictionary which contains:
-         * ``"xyrv"``: coordinates, radius and velocity coefficient for each individual
-         * ``"destinations"``: destination for each individual
-         * ``"gpid"``: group id
-
-    rng: RandomState
-        scipy random state object (see ``scipy.random.RandomState``)
+    dict or None
+        Dictionary containing newly created pedestrians, or ``None`` when no
+        pedestrian must be added during this call.
     """
-    if (verbose):
-        print("\n =================> INITIALIZATION: PEOPLE POSITIONS")
-    # To initialize people positions
-    rng = np.random.RandomState()
-    if (seed > 0):
-        rng = np.random.RandomState(seed)
-    if (verbose):
-        print("=================> INITIALIZATION: SEED = ", rng.get_state()[1][0])
-    # People properties: radius, velocity coefficient and initial random coordinates
-    # overlaps can occur...
-    N = 0
-    for gp in groups:
-        N += gp["nb"]
-    xyrv = np.zeros((N, 4))  # x y r v
-    gpid = np.zeros((N,), dtype=int)
-    dest = []
+    if log:
+        _LOGGER.info("add_people_flows: updating population flows")
+
+    if rng is None:
+        if log:
+            _LOGGER.info("add_people_flows: creating a new RandomState")
+        if seed == 0:
+            rng = np.random.RandomState()
+        else:
+            rng = np.random.RandomState(seed)
+        if log:
+            _LOGGER.info(
+                "add_people_flows: RandomState seed=%d",
+                rng.get_state()[1][0],
+            )
+
+    # Convert accumulated flow rates into integer numbers of pedestrians while
+    # retaining the fractional remainder for the next call.
+    group_counts = []
+    for group in groups:
+        if group["flux_per_minute"] is True:
+            if "flux" not in group:
+                group["flux"] = group["nb"] * flow_duration / 60.0
+            else:
+                group["flux"] += group["nb"] * flow_duration / 60.0
+
+            if group["flux"] >= 1:
+                group_counts.append(int(group["flux"]))
+                group["flux"] -= group_counts[-1]
+            else:
+                group_counts.append(0)
+        else:
+            group["flux"] = 0.0
+            group_counts.append(0)
+
+    if log:
+        _LOGGER.info(
+            "add_people_flows: group_counts=%s, remaining_flows=%s",
+            group_counts,
+            [group["flux"] for group in groups],
+        )
+
+    n_people = sum(group_counts)
+    if n_people == 0:
+        return None
+
+    xyrv = np.zeros((n_people, 4))
+    destinations = []
+    viewing_angles = np.zeros((n_people,))
+    masses = np.zeros((n_people,))
+    with_frustration = np.zeros((n_people,))
     pos = 0
-    # Loop over all the groups
-    for igp, gp in enumerate(groups):
-        nn = gp["nb"]
-        if (verbose):
-            print("=================> INITIALIZATION: " + str(nn) + " IN BOX " +
-                  str(gp["box"]))
-        pp, pp_dest = create_people_in_box(nn, gp["box"],
-                                           gp["destination"],
-                                           gp["radius_distribution"],
-                                           gp["velocity_distribution"],
-                                           dom, rng, verbose=verbose)
-        pp = remove_overlaps_in_box(dom, gp["box"], pp,
-                                    pp_dest, dt, rng,
-                                    dmin_people=dmin_people,
-                                    dmin_walls=dmin_walls,
-                                    itermax=itermax,
-                                    projection_method=projection_method,
-                                    verbose=verbose)
-        xyrv[pos:pos+nn, 0] = pp[:, 0]
-        xyrv[pos:pos+nn, 1] = pp[:, 1]
-        xyrv[pos:pos+nn, 2] = pp[:, 2]
-        xyrv[pos:pos+nn, 3] = pp[:, 3]
-        gpid[pos:pos+nn] = igp
-        dest += pp_dest
+
+    for group, nn in zip(groups, group_counts):
+        if nn <= 0:
+            continue
+        try:
+            pp, pp_dest, pp_view, pp_mass = _create_people_for_group(
+                nn,
+                group,
+                dom,
+                dt,
+                rng,
+                dmin_people,
+                dmin_walls,
+                itermax,
+                projection_method,
+                log,
+            )
+        except Exception as exc:
+            raise ValueError(f"The population group {group!r} cannot be created") from exc
+
+        xyrv[pos:pos + nn, :] = pp
+        destinations += pp_dest
+        viewing_angles[pos:pos + nn] = pp_view
+        masses[pos:pos + nn] = pp_mass
+        if group["with_frustration"] is True:
+            with_frustration[pos:pos + nn] = 1
         pos += nn
-    if (verbose):
-        print("=================> INITIALIZATION: LAST STEP (remove the overlaps" +
-              " between individuals in different boxes...)")
-    xyrv = remove_overlaps_in_box(dom, [dom.xmin, dom.xmax, dom.ymin, dom.ymax],
-                                  xyrv, dest, dt, rng,
-                                  dmin_people=dmin_people,
-                                  dmin_walls=dmin_walls,
-                                  projection_method=projection_method,
-                                  itermax=itermax, verbose=verbose)
-    if (verbose):
-        print("=================> INITIALIZATION: END ! \n")
-    people = {}
-    people["xyrv"] = xyrv
-    people["Vd"] = np.zeros((xyrv.shape[0], 2))
-    people["U"] = np.zeros((xyrv.shape[0], 2))
-    people["Uold"] = np.zeros((xyrv.shape[0], 2))
-    people["destinations"] = np.array(dest, dtype="U20")
-    people["paths"] = {}
-    people["rng"] = rng
-    people["id"] = np.char.add([dom.name+'_']*xyrv.shape[0],
-                               np.arange(xyrv.shape[0]).astype('<U3'))
-    people["last_id"] = dom.name+'_'+str(xyrv.shape[0]-1)
+
+    people_to_add = {
+        "xyrv": xyrv,
+        "Vd": np.zeros((n_people, 2)),
+        "U": np.zeros((n_people, 2)),
+        "Uold": np.zeros((n_people, 2)),
+        "viewing_angle": viewing_angles,
+        "mass": masses,
+        "destinations": np.array(destinations, dtype="U20"),
+        "with_frustration": with_frustration,
+        "frustration": np.zeros((n_people,)),
+        "frustration_last_pos": -np.ones((n_people,), dtype=int),
+        "frustration_memory": -np.ones((n_people,frustration_memory_size)),
+        "frustration_memory_times": -np.ones((n_people,frustration_memory_size)),
+        "beta": np.ones((n_people,)),
+        "paths": {},
+        "rng": rng,
+    }
+    people_to_add["id"] = np.char.add(
+        [dom.name + "_"] * n_people,
+        np.arange(dom.people_counter, dom.people_counter + n_people).astype("<U6"),
+    )
+    for ip, person_id in enumerate(people_to_add["id"]):
+        people_to_add["paths"][person_id] = people_to_add["xyrv"][ip, :2]
+
+    dom.people_counter += n_people
+    return people_to_add
+
+
+def people_initialization(dom, groups, dt, dmin_people=0, dmin_walls=0, rng=None,
+                          seed=0, itermax=10, frustration_memory_size=10,
+                          flow_duration=0.0, projection_method="cvxopt", log=True):
+    """Initialize the pedestrian population for one domain.
+
+    Flow-driven groups are processed first, followed by groups with a fixed
+    initial population. Pedestrians are assigned identifiers and auxiliary
+    arrays used by the microscopic model.
+
+    Parameters
+    ----------
+    dom : Domain
+        Domain in which pedestrians are initialized.
+    groups : sequence of dict
+        Population-group definitions. Each group may define ``"nb"``,
+        ``"flux_per_minute"``, distribution specifications, ``"box"``,
+        ``"color_for_positions"``, ``"destination"`` and
+        ``"with_frustration"``.
+    dt : float
+        Simulation time step.
+    dmin_people : float, optional
+        Minimum pedestrian-pedestrian distance.
+    dmin_walls : float, optional
+        Minimum pedestrian-wall distance.
+    rng : numpy.random.RandomState or None, optional
+        Random-number generator.
+    seed : int, optional
+        Seed used only when ``rng`` is ``None``. ``0`` requests a
+        non-deterministic seed.
+    itermax : int, optional
+        Maximum number of overlap-removal iterations.
+    frustration_memory_size : int, optional
+        Number of entries allocated for frustration history.
+    flow_duration : float, optional
+        Duration, in seconds, represented by the current flow update.
+    projection_method : str, optional
+        Projection solver used while removing overlaps.
+    log : bool, optional
+        If ``True``, emit initialization diagnostics.
+
+    Returns
+    -------
+    dict or None
+        Initialized pedestrian dictionary, or ``None`` if no pedestrian is
+        created.
+    """
+    if log:
+        _LOGGER.info("people_initialization: starting population initialization")
+
+    if rng is None:
+        if log:
+            _LOGGER.info("people_initialization: creating a new RandomState")
+        if seed == 0:
+            rng = np.random.RandomState()
+        else:
+            rng = np.random.RandomState(seed)
+        if log:
+            _LOGGER.info(
+                "people_initialization: RandomState seed=%d",
+                rng.get_state()[1][0],
+            )
+
+    # Flow groups are initialized first. The original solver/default iteration
+    # settings used by add_people_flows are intentionally preserved here.
+    people = add_people_flows(
+        dom,
+        groups,
+        dt,
+        dmin_people=dmin_people,
+        dmin_walls=dmin_walls,
+        rng=rng,
+        flow_duration=flow_duration,
+        frustration_memory_size=frustration_memory_size,
+        log=log,
+    )
+    n_flow_people = 0 if people is None else people["xyrv"].shape[0]
+    if log:
+        _LOGGER.info(
+            "people_initialization: created %d pedestrians from flows",
+            n_flow_people,
+        )
+
+    no_flow_groups = [group for group in groups if group["flux_per_minute"] is False]
+    n_initial = sum(group["nb"] for group in no_flow_groups)
+
+    if n_initial > 0:
+        if people is not None:
+            pos = people["xyrv"].shape[0]
+            xyrv = np.concatenate((people["xyrv"], np.zeros((n_initial, 4))))
+            destinations = list(people["destinations"])
+            ids = people["id"]
+            viewing_angles = np.concatenate(
+                (people["viewing_angle"], np.zeros((n_initial,)))
+            )
+            masses = np.concatenate((people["mass"], np.zeros((n_initial,))))
+            with_frustration = np.concatenate(
+                (people["with_frustration"], np.zeros((n_initial,)))
+            )
+        else:
+            xyrv = np.zeros((n_initial, 4))
+            destinations = []
+            ids = np.array([])
+            viewing_angles = np.zeros((n_initial,))
+            masses = np.zeros((n_initial,))
+            with_frustration = np.zeros((n_initial,))
+            pos = 0
+
+        for group in no_flow_groups:
+            nn = group["nb"]
+            if nn <= 0:
+                continue
+            if log:
+                _LOGGER.info(
+                    "people_initialization: creating fixed group with count=%d",
+                    nn,
+                )
+            try:
+                pp, pp_dest, pp_view, pp_mass = _create_people_for_group(
+                    nn,
+                    group,
+                    dom,
+                    dt,
+                    rng,
+                    dmin_people,
+                    dmin_walls,
+                    itermax,
+                    projection_method,
+                    log,
+                )
+            except Exception as exc:
+                raise ValueError(
+                    f"The population group {group!r} cannot be created"
+                ) from exc
+
+            xyrv[pos:pos + nn, :] = pp
+            destinations += pp_dest
+            ids = np.concatenate((ids,
+                np.char.add(
+                    [dom.name + "_"] * nn,
+                    np.arange(dom.people_counter, dom.people_counter + nn).astype("<U6"),
+                )
+            ))
+            dom.people_counter += nn
+            viewing_angles[pos:pos + nn] = pp_view
+            masses[pos:pos + nn] = pp_mass
+            if group["with_frustration"] is True:
+                with_frustration[pos:pos + nn] = 1
+            pos += nn
+
+        if log:
+            _LOGGER.info(
+                "people_initialization: removing overlaps across the full domain"
+            )
+        xyrv = remove_overlaps_in_box(
+            dom,
+            [dom.xmin, dom.xmax, dom.ymin, dom.ymax],
+            xyrv,
+            destinations,
+            masses,
+            dt,
+            rng,
+            dmin_people=dmin_people,
+            dmin_walls=dmin_walls,
+            projection_method=projection_method,
+            itermax=itermax,
+            log=log,
+        )
+
+        if log:
+            _LOGGER.info(
+                "people_initialization: created %d pedestrians from fixed groups",
+                n_initial,
+            )
+
+        people = {
+            "xyrv": xyrv,
+            "Vd": np.zeros((xyrv.shape[0], 2)),
+            "U": np.zeros((xyrv.shape[0], 2)),
+            "Uold": np.zeros((xyrv.shape[0], 2)),
+            "viewing_angle": viewing_angles,
+            "mass": masses,
+            "destinations": np.array(destinations, dtype="U20"),
+            "with_frustration": with_frustration,
+            "frustration": np.zeros((xyrv.shape[0],)),
+            "frustration_last_pos": -np.ones((xyrv.shape[0],), dtype=int),
+            "frustration_memory": -np.ones((xyrv.shape[0],frustration_memory_size)),
+            "frustration_memory_times": -np.ones((xyrv.shape[0],frustration_memory_size)),
+            "beta": np.ones((xyrv.shape[0],)),
+            "paths": {},
+            "id": ids,
+            "rng": rng,
+        }
+        for ip, person_id in enumerate(people["id"]):
+            people["paths"][person_id] = people["xyrv"][ip, :2]
+
+    if people is not None and log:
+        _LOGGER.info(
+            "people_initialization: total pedestrians=%d",
+            people["xyrv"].shape[0],
+        )
+
     return people
 
 
 def find_duplicate_people(all_people, domains):
-    """
-    This function determines people who have to be duplicated
-    due to their presence in transit boxes (in Destination object)
+    """Build virtual pedestrians for overlapping transit regions.
+
+    Pedestrians located inside a destination transit box are copied to the
+    connected domain using the configured spatial shift. The reverse copy is
+    also performed for pedestrians located in the shifted transit box.
 
     Parameters
     ----------
-    all_people: dict
-        Has one dictionary ``"people"`` by domain which has at least:
-         * ``"xyrv"``: people coordinates and radius
-         * ``"destinations"``: destination for each individual
-    domains: dict
-        Contains all the Domain objets
+    all_people : dict
+        Mapping from domain names to pedestrian dictionaries.
+    domains : dict
+        Mapping from domain names to :class:`Domain` objects.
 
     Returns
     -------
-    virtual_people: dict
-        all duplicated people
+    dict
+        Virtual pedestrian dictionaries for every domain.
     """
     virtual_people = {}
     for name in domains:
         virtual_people[name] = {}
-        virtual_people[name]["xyrv"] = None
-        virtual_people[name]["Vd"] = None
-        virtual_people[name]["U"] = None
-        virtual_people[name]["Uold"] = None
-
+        for key in PEOPLE_ARRAY_KEYS:
+            virtual_people[name][key] = None
+        for key in PEOPLE_LIST_KEYS:
+            virtual_people[name][key] = []
+        for key in PEOPLE_DICT_KEYS:        
+            virtual_people[name][key] = None
+        
     for name in domains:
         # print("===> Look at virtual people from domain ",name)
         dom = domains[name]
         for dest_name in dom.destinations:
-            box = dom.destinations[dest_name].next_transit_box
+            # _LOGGER.info(
+            #     f"find_duplicate_people: domain={name}, "
+            #     f"current destination={dest_name}, "
+            #     f"all upcoming available destinations={dom.destinations[dest_name].next_destination}"
+            # )
+            for inextdest in range(len(dom.destinations[dest_name].next_destination)):
+                box = dom.destinations[dest_name].next_transit_box[inextdest]
+                box_xshift = dom.destinations[dest_name].next_transit_box_xshift[inextdest]
+                box_yshift = dom.destinations[dest_name].next_transit_box_yshift[inextdest]
+                if box is not None:
+                    box = np.array(box)
+                    box = np.vstack((box,box[0,:]))
+                    
+                    next_domain_name = dom.destinations[dest_name].next_domain[inextdest]
 
-            if box is not None:
-                box = np.array(box)
-                box = np.vstack((box, box[0, :]))
+                    ## People in this domain "name" that must be replicated in
+                    ## the domain "next_domain_name"
+                    p = all_people[name]["xyrv"]
+                    if (p.shape[0]>0):
+                        #ind = np.where(all_people[name]["destinations"]==dest_name)[0]
+                        #test = np.zeros(ind.shape[0])
+                        test = np.zeros(p.shape[0])
+                        for i in np.arange(box.shape[0]-1):
+                            # vx = box[i,0]-p[ind,0]
+                            # vy = box[i,1]-p[ind,1]
+                            # wx = box[i+1,0]-p[ind,0]
+                            # wy = box[i+1,1]-p[ind,1]
+                            vx = box[i,0]-p[:,0]
+                            vy = box[i,1]-p[:,1]
+                            wx = box[i+1,0]-p[:,0]
+                            wy = box[i+1,1]-p[:,1]
+                            test += np.arccos(np.maximum(-1.0, np.minimum(1.0, ( (vx*wx+vy*wy)/np.sqrt(vx*vx+vy*vy)/np.sqrt(wx*wx+wy*wy)))))
+                        #inside = ind[np.where(np.abs(test-2*np.pi)<0.001)[0]]
+                        inside = np.where(np.abs(test-2*np.pi)<0.001)[0]
+                        if (inside.shape[0]>0):
+                            # _LOGGER.info(
+                            #     f"find_duplicate_people: domain={name}, "
+                            #     f"current destination={dest_name}, "
+                            #     f"next destination={dom.destinations[dest_name].next_destination[inextdest]}, "
+                            #     f"next domain={dom.destinations[dest_name].next_domain[inextdest]}, "
+                            #     f"{inside.shape[0]} people inside transit box {box}, "
+                            #     f"inside = {inside}, "
+                            #     f"apply xhift {box_xshift} and yshift {box_yshift} "
+                            #     f"=> put them in virtual_people"
+                            # )
+                            xyrv_inside = all_people[name]["xyrv"][inside].copy()
+                            xyrv_inside[:,0] += box_xshift
+                            xyrv_inside[:,1] += box_yshift
+                    
+                            if (virtual_people[next_domain_name]["xyrv"] is not None) \
+                                and (virtual_people[next_domain_name]["xyrv"].shape[0]>0):
+                                    
+                                virtual_people[next_domain_name]["xyrv"] = np.concatenate((
+                                    virtual_people[next_domain_name]["xyrv"],
+                                    xyrv_inside))
+                                
+                                for key in [k for k in PEOPLE_ARRAY_KEYS if k != "xyrv"]:
+                                    virtual_people[next_domain_name][key] = np.concatenate((
+                                        virtual_people[next_domain_name][key],
+                                        all_people[name][key][inside])
+                                    )          
+                                                   
+                                for key in [k for k in PEOPLE_LIST_KEYS]:
+                                    virtual_people[next_domain_name][key] = \
+                                        virtual_people[next_domain_name][key] + \
+                                        all_people[name][key][inside]
+                            
+                            else:
+                                
+                                virtual_people[next_domain_name]["xyrv"] \
+                                    = xyrv_inside
+                                    
+                                for key in PEOPLE_ARRAY_KEYS:
+                                    if key=="xyrv":
+                                        continue
+                                    else:
+                                        virtual_people[next_domain_name][key] \
+                                        = all_people[name][key][inside]
+                                    
+                                for key in [k for k in PEOPLE_LIST_KEYS]:
+                                    virtual_people[next_domain_name][key] = \
+                                        all_people[name][key][inside]
 
-                next_domain_name = dom.destinations[dest_name].next_domain
+                            # _LOGGER.info(
+                            #     f"find_duplicate_people: virtual_people[{next_domain_name}]="
+                            #     f"{virtual_people[next_domain_name]}"
+                            # )
+                        ## To check if an individual appears two times...
+                        if (inside.shape[0]>0):
+                            virtual_people[next_domain_name]["xyrv"], indices \
+                                = np.unique(virtual_people[next_domain_name]["xyrv"],
+                                            return_index=True, axis=0)
+                            for key in PEOPLE_ARRAY_KEYS:
+                                if key=="xyrv":
+                                    continue
+                                else:
+                                    virtual_people[next_domain_name][key] = \
+                                        virtual_people[next_domain_name][key][indices]
+                            
+                    ## People in the domain "next_domain_name" that must be replicated
+                    ## in this domain "name"
+                    p = all_people[next_domain_name]["xyrv"]
+                    if (p.shape[0]>0):
+                        test = np.zeros(p.shape[0])
+                        next_domain_box = box.copy()
+                        next_domain_box[:,0] += box_xshift
+                        next_domain_box[:,1] += box_yshift
+                        # print("next_domain_box =", next_domain_box)
 
-                # People in this domain "name" that must be replicated in
-                # the domain "next_domain_name"
-                p = all_people[name]["xyrv"]
-                # ind = np.where(all_people[name]["destinations"]==dest_name)[0]
-                # test = np.zeros(ind.shape[0])
-                test = np.zeros(p.shape[0])
-                for i in np.arange(box.shape[0]-1):
-                    # vx = box[i,0]-p[ind,0]
-                    # vy = box[i,1]-p[ind,1]
-                    # wx = box[i+1,0]-p[ind,0]
-                    # wy = box[i+1,1]-p[ind,1]
-                    vx = box[i, 0]-p[:, 0]
-                    vy = box[i, 1]-p[:, 1]
-                    wx = box[i+1, 0]-p[:, 0]
-                    wy = box[i+1, 1]-p[:, 1]
-                    test += np.arccos((vx*wx+vy*wy)/np.sqrt(vx*vx+vy*vy)/np.sqrt(wx*wx+wy*wy))
-                # inside = ind[np.where(np.abs(test-2*np.pi)<0.001)[0]]
-                inside = np.where(np.abs(test-2*np.pi) < 0.001)[0]
-                # print("test=",test)
-                # print("people inside: ",inside,
-                #      " must be copy in domain ",next_domain_name)
-                for key in ["xyrv", "Vd", "U", "Uold"]:
-                    try:
-                        virtual_people[next_domain_name][key] = np.concatenate((
-                            virtual_people[next_domain_name][key],
-                            all_people[name][key][inside]))
-                    except:
-                        virtual_people[next_domain_name][key] \
-                            = all_people[name][key][inside]
+                        for i in np.arange(next_domain_box.shape[0]-1):
+                            vx = next_domain_box[i,0]-p[:,0]
+                            vy = next_domain_box[i,1]-p[:,1]
+                            wx = next_domain_box[i+1,0]-p[:,0]
+                            wy = next_domain_box[i+1,1]-p[:,1]
+                            test += np.arccos( np.maximum(-1.0, np.minimum(1.0, ( (vx*wx+vy*wy)/np.sqrt(vx*vx+vy*vy)/np.sqrt(wx*wx+wy*wy)))))
+                        #print("test=",test)
+                        inside = np.where(np.abs(test-2*np.pi)<0.001)[0]
+                        # print("people inside: ",inside,
+                        #       " must be copy in domain ",name)
+                        next_domain_xyrv_inside = all_people[next_domain_name]["xyrv"][inside].copy()
+                        next_domain_xyrv_inside[:,0] -= box_xshift
+                        next_domain_xyrv_inside[:,1] -= box_yshift
+                        # print("next_domain box_xshift =",box_xshift," box_yshift =",box_yshift," next_domain_xyrv_inside =",next_domain_xyrv_inside)
+                        try:
+                            virtual_people[name]["xyrv"] = np.concatenate((
+                                virtual_people[name]["xyrv"],
+                                next_domain_xyrv_inside))
+                        except Exception:
+                            virtual_people[name]["xyrv"] \
+                                = next_domain_xyrv_inside
+                            for key in PEOPLE_ARRAY_KEYS:
+                                if key=="xyrv":
+                                    continue
+                                else:
+                                    try:
+                                        virtual_people[name][key] = np.concatenate((
+                                            virtual_people[name][key],
+                                            all_people[next_domain_name][key][inside]))
+                                    except Exception:
+                                        virtual_people[name][key] \
+                                            = all_people[next_domain_name][key][inside]
 
-                # To check if an individual appears two times...
-                if (inside.shape[0] > 0):
-                    virtual_people[next_domain_name]["xyrv"], indices \
-                        = np.unique(virtual_people[next_domain_name]["xyrv"],
-                                    return_index=True, axis=0)
-                    virtual_people[next_domain_name]["Vd"] = \
-                        virtual_people[next_domain_name]["Vd"][indices]
-                    virtual_people[next_domain_name]["U"] = \
-                        virtual_people[next_domain_name]["U"][indices]
-                    virtual_people[next_domain_name]["Uold"] = \
-                        virtual_people[next_domain_name]["Uold"][indices]
-
-                # People in the domain "next_domain_name" that must be replicated
-                # in this domain "name"
-                p = all_people[next_domain_name]["xyrv"]
-                test = np.zeros(p.shape[0])
-                for i in np.arange(box.shape[0]-1):
-                    vx = box[i, 0]-p[:, 0]
-                    vy = box[i, 1]-p[:, 1]
-                    wx = box[i+1, 0]-p[:, 0]
-                    wy = box[i+1, 1]-p[:, 1]
-                    test += np.arccos((vx*wx+vy*wy)/np.sqrt(vx*vx+vy*vy)/np.sqrt(wx*wx+wy*wy))
-                # print("test=",test)
-                inside = np.where(np.abs(test-2*np.pi) < 0.001)[0]
-                # print("people inside: ",inside,
-                #       " must be copy in domain ",name)
-                for key in ["xyrv", "Vd", "U", "Uold"]:
-                    try:
-                        virtual_people[name][key] = np.concatenate((
-                            virtual_people[name][key],
-                            all_people[next_domain_name][key][inside]))
-                    except:
-                        virtual_people[name][key] \
-                            = all_people[next_domain_name][key][inside]
-
-                # To check if an individual appears two times...
-                if (inside.shape[0] > 0):
-                    virtual_people[name]["xyrv"], indices \
-                        = np.unique(virtual_people[name]["xyrv"],
-                                    return_index=True, axis=0)
-                    virtual_people[name]["Vd"] \
-                        = virtual_people[name]["Vd"][indices]
-                    virtual_people[name]["U"] \
-                        = virtual_people[name]["U"][indices]
-                    virtual_people[name]["Uold"] \
-                        = virtual_people[name]["Uold"][indices]
+                        ## To check if an individual appears two times...
+                        if (inside.shape[0]>0):
+                            virtual_people[name]["xyrv"], indices \
+                                = np.unique(virtual_people[name]["xyrv"],
+                                            return_index=True, axis=0)
+                            for key in PEOPLE_ARRAY_KEYS:
+                                if key=="xyrv":
+                                    continue
+                                else:
+                                    virtual_people[name][key] \
+                                        = virtual_people[name][key][indices]
 
     return virtual_people
 
 
+def append_people(people, people_to_add):
+    """Append a newly generated pedestrian batch to an existing population."""
+    for key in PEOPLE_ARRAY_KEYS:
+        people[key] = np.concatenate(
+            (people[key], people_to_add[key])
+        )
+    
+    for key in PEOPLE_LIST_KEYS:
+        people[key] = people[key] + people_to_add[key]
+        
+    for key in PEOPLE_DICT_KEYS:
+        people[key] = people[key] | people_to_add[key]
+
+    
 def people_update_destination(all_people, domains, thld, box=None):
-    """
-    This function updates people destinations and domains
+    """Update pedestrian destinations, domain transfers and removals.
+
+    Pedestrians outside the allowed geometry are removed. Pedestrians close to
+    their current destination are either transferred to a next domain, shifted
+    through a transit box, assigned a new destination, or removed when no next
+    destination is defined.
 
     Parameters
     ----------
-    all_people: dict
-        Has one dictionary ``"people"`` by domain which has at least:
-         * ``"xyrv"``: people coordinates and radius
-         * ``"destinations"``: destination for each individual
-    domains: dict
-        Contains all the Domain objets
-    thld: float
-        threshold value used to decide if an individual has reached its destination
-    box: numpy array
-        box used to remove people outside
+    all_people : dict
+        Mapping from domain names to pedestrian dictionaries.
+    domains : dict
+        Mapping from domain names to :class:`Domain` objects.
+    thld : float
+        Distance threshold used to decide whether a destination has been
+        reached.
+    box : sequence of float or None, optional
+        Optional removal box ``[xmin, xmax, ymin, ymax]``. If ``None``, each
+        domain bounding box is used.
 
     Returns
     -------
-    all_people: dict
-        all people in all domains updated
+    dict
+        Updated ``all_people`` mapping.
     """
 
     for name in domains:
-        print("===> Remove people outside its domain ", name, " or the given box")
         p = all_people[name]["xyrv"]
-        dom = domains[name]
-        # Test if there are people outside the domain or outside the given box
-        # If it is the case, we remove these persons...
-        if box is None:
-            # Remove people who are outside the domain
-            S = (p[:, 0]-p[:, 2] <= dom.xmin+dom.pixel_size) +\
-                (p[:, 0]-p[:, 2] >= dom.xmax-dom.pixel_size) +\
-                (p[:, 1]-p[:, 2] <= dom.ymin+dom.pixel_size) +\
-                (p[:, 1]-p[:, 2] >= dom.ymax-dom.pixel_size)
-        else:
-            # Remove people who are outside the given box
-            S = (p[:, 0]-p[:, 2] <= box[0]+dom.pixel_size) +\
-                (p[:, 0]-p[:, 2] >= box[1]-dom.pixel_size) +\
-                (p[:, 1]-p[:, 2] <= box[2]+dom.pixel_size) +\
-                (p[:, 1]-p[:, 2] >= box[3]-dom.pixel_size)
-        out = np.where(S)[0]
-        if (out.shape[0] > 0):
-            for ik, key in enumerate(all_people[name]):
-                # print(ik, key)
-                if (key != "paths"):
+        if (p.shape[0]>0):
+            dom = domains[name]
+            # Test if there are people outside the domain or outside the given box
+            # If it is the case, we remove these persons...
+            if box is None:
+                # Remove people who are outside the domain
+                S = (p[:, 0]-p[:, 2] <= dom.xmin+dom.pixel_size) +\
+                    (p[:, 0]-p[:, 2] >= dom.xmax-dom.pixel_size) +\
+                    (p[:, 1]-p[:, 2] <= dom.ymin+dom.pixel_size) +\
+                    (p[:, 1]-p[:, 2] >= dom.ymax-dom.pixel_size)
+            else:
+                # Remove people who are outside the given box
+                S = (p[:, 0]-p[:, 2] <= box[0]+dom.pixel_size) +\
+                    (p[:, 0]-p[:, 2] >= box[1]-dom.pixel_size) +\
+                    (p[:, 1]-p[:, 2] <= box[2]+dom.pixel_size) +\
+                    (p[:, 1]-p[:, 2] >= box[3]-dom.pixel_size)
+            out = np.where(S)[0]
+            if (out.shape[0] > 0):
+                _LOGGER.info(
+                    f"people_update_destination: removing {out.shape[0]} pedestrians "
+                    f"outside domain={name} xy = {p[out,:2]}"
+                )
+                for ik, key in enumerate(all_people[name]):
+                    # print(ik, key)
+                    if (key != "paths"):
+                        try:
+                            if (all_people[name][key].shape[0] == p.shape[0]):
+                                all_people[name][key] = \
+                                    np.delete(all_people[name][key], out, 0)
+                        except Exception:
+                            pass
+            
+    for idom,name in enumerate(domains):
+        p = all_people[name]["xyrv"]
+        if (p.shape[0]>0):
+            dom = domains[name]
+            destinations = all_people[name]["destinations"]
+            # Test if people are close to their destinations
+            II = np.floor((p[:, 1]-dom.ymin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
+            JJ = np.floor((p[:, 0]-dom.xmin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
+            all_people[name]["II"] = II
+            all_people[name]["JJ"] = JJ
+
+            # Remove people with II or JJ outside
+            testI = (II >= 0)*(II < dom.height)
+            testJ = (JJ >= 0)*(JJ < dom.width)
+            outI = np.where(testI == False)[0]
+            outJ = np.where(testJ == False)[0]
+            out = np.unique(np.concatenate((outI, outJ)))
+            if (out.shape[0] > 0):
+                _LOGGER.info(
+                    "people_update_destination: deleting %d pedestrians outside "
+                    "domain=%s; xy=%s, II=%s, JJ=%s. Check whether the "
+                    "domain is overcrowded.",
+                    out.shape[0],
+                    name,
+                    all_people[name]["xyrv"][out, :2],
+                    II[out],
+                    JJ[out],
+                )
+                for key in all_people[name]:
+                    try:
+                        if (all_people[name][key].shape[0] == p.shape[0]):
+                            all_people[name][key] = np.delete(all_people[name][key], out, 0)
+                    except Exception:
+                        pass
+                destinations = all_people[name]["destinations"]
+                p = all_people[name]["xyrv"]
+                II = np.floor((p[:, 1]-dom.ymin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
+                JJ = np.floor((p[:, 0]-dom.xmin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
+                all_people[name]["II"] = II
+                all_people[name]["JJ"] = JJ
+
+            # Remove people inside the walls
+            in_wall = np.where(dom.wall_mask[II, JJ] > 0)[0]
+            if (in_wall.shape[0] > 0):
+                _LOGGER.info(
+                    "people_update_destination: deleting %d pedestrians inside walls "
+                    "in domain=%s; positions=%s, II=%s, JJ=%s. Check whether the "
+                    "domain is overcrowded.",
+                    in_wall.shape[0],
+                    name,
+                    all_people[name]["xyrv"][in_wall, :2],
+                    II[in_wall],
+                    JJ[in_wall],
+                )
+                for key in all_people[name]:
                     try:
                         if (all_people[name][key].shape[0] == p.shape[0]):
                             all_people[name][key] = \
-                                np.delete(all_people[name][key], out, 0)
-                    except:
+                                np.delete(all_people[name][key], in_wall, 0)
+                    except Exception:
                         pass
-    for name in domains:
-        print("===> Update people destinations for domain ", name)
-        # print("    => people at ", name, " must be updated: ", all_people[name])
-        p = all_people[name]["xyrv"]
-        dom = domains[name]
-        destinations = all_people[name]["destinations"]
-        # Test if people are close to their destinations
-        II = np.floor((p[:, 1]-dom.ymin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
-        JJ = np.floor((p[:, 0]-dom.xmin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
-        all_people[name]["II"] = II
-        all_people[name]["JJ"] = JJ
+                destinations = all_people[name]["destinations"]
+                p = all_people[name]["xyrv"]
+                II = np.floor((p[:, 1]-dom.ymin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
+                JJ = np.floor((p[:, 0]-dom.xmin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
+                all_people[name]["II"] = II
+                all_people[name]["JJ"] = JJ
 
-        # Remove people with II or JJ outside
-        testI = (II >= 0)*(II < dom.height)
-        testJ = (JJ >= 0)*(JJ < dom.width)
-        outI = np.where(testI == False)[0]
-        outJ = np.where(testJ == False)[0]
-        out = np.unique(np.concatenate((outI, outJ)))
-        if (out.shape[0] > 0):
-            print("** WARNING: people_update_destination **")
-            print("** WARNING: "+str(out.shape[0])+" persons are deleted **")
-            print("** WARNING: because outside the domain... **")
-            print("** WARNING: Are there too many people in the domain ? **")
-            for key in all_people[name]:
+            # Keep all people paths
+            for ip, pid in enumerate(all_people[name]["id"]):
                 try:
-                    if (all_people[name][key].shape[0] == p.shape[0]):
-                        all_people[name][key] = np.delete(all_people[name][key], out, 0)
-                except:
-                    pass
-            destinations = all_people[name]["destinations"]
-            p = all_people[name]["xyrv"]
-            II = np.floor((p[:, 1]-dom.ymin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
-            JJ = np.floor((p[:, 0]-dom.xmin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
-            all_people[name]["II"] = II
-            all_people[name]["JJ"] = JJ
+                    all_people[name]["paths"][pid] = \
+                        np.hstack((all_people[name]["paths"][pid], p[ip, :2]))
+                except Exception:
+                    all_people[name]["paths"][pid] = p[ip, :2]
+            # print("path: ",all_people[name]["paths"])
 
-        # Remove people inside the walls
-        in_wall = np.where(dom.wall_mask[II, JJ] > 0)[0]
-        if (in_wall.shape[0] > 0):
-            print("** WARNING: people_update_destination **")
-            print("** WARNING: "+str(in_wall.shape[0])+" persons are deleted **")
-            print("** WARNING: because inside the walls... **")
-            print("** WARNING: Are there too many people in the domain ? **")
-            for key in all_people[name]:
-                try:
-                    if (all_people[name][key].shape[0] == p.shape[0]):
-                        all_people[name][key] = \
-                            np.delete(all_people[name][key], in_wall, 0)
-                except:
-                    pass
-            destinations = all_people[name]["destinations"]
-            p = all_people[name]["xyrv"]
-            II = np.floor((p[:, 1]-dom.ymin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
-            JJ = np.floor((p[:, 0]-dom.xmin-0.5*dom.pixel_size)/dom.pixel_size).astype(int)
-            all_people[name]["II"] = II
-            all_people[name]["JJ"] = JJ
+            # Change destination or remove people who are at their final destination
+            id_rm = None
+            for id,dest_name in enumerate(np.unique(destinations)):
 
-        # Keep all people paths
-        for ip, pid in enumerate(all_people[name]["id"]):
-            try:
-                all_people[name]["paths"][pid] = \
-                    np.hstack((all_people[name]["paths"][pid], p[ip, :2]))
-            except:
-                all_people[name]["paths"][pid] = p[ip, :2]
-        # print("path: ",all_people[name]["paths"])
-
-        # Change destination or remove people who are at their final destination
-        id_rm = None
-        for dest_name in np.unique(destinations):
-            ind = np.where(destinations == dest_name)[0]
-            D = dom.destinations[dest_name].distance[II[ind], JJ[ind]]-p[ind, 2]
-            # Test if people are close to their destination
-            ind2 = np.where(D <= thld)[0]
-            # print("     ",ind2," are close to their destination ",dest_name)
-            if (ind2.shape[0] > 0):
-                if (dom.destinations[dest_name].next_destination is not None):
-                    next_domain = dom.destinations[dest_name].next_domain
-                    if (next_domain != name):
-                        # In this case we have to copy these persons in their new
-                        # domain, and then remove them
-                        # print("     => change domain and destination...")
-                        # update destination
-                        all_people[name]["destinations"][ind[ind2]] \
-                            = dom.destinations[dest_name].next_destination
-                        # print(dom.destinations[dest_name].next_destination)
-                        # move
-                        all_people[next_domain]["xyrv"] = np.concatenate(
-                            (all_people[next_domain]["xyrv"],
-                             all_people[name]["xyrv"][ind[ind2]]))
-                        all_people[next_domain]["destinations"] = np.concatenate(
-                            (all_people[next_domain]["destinations"],
-                             all_people[name]["destinations"][ind[ind2]]))
-                        all_people[next_domain]["id"] = np.concatenate(
-                            (all_people[next_domain]["id"],
-                             all_people[name]["id"][ind[ind2]]))
-                        all_people[next_domain]["Vd"] = np.concatenate(
-                            (all_people[next_domain]["Vd"],
-                             all_people[name]["Vd"][ind[ind2]]))
-                        all_people[next_domain]["U"] = np.concatenate(
-                            (all_people[next_domain]["U"],
-                             all_people[name]["U"][ind[ind2]]))
-                        all_people[next_domain]["Uold"] = np.concatenate(
-                            (all_people[next_domain]["Uold"],
-                             all_people[name]["Uold"][ind[ind2]]))
-                        # remove
-                        try:
-                            id_rm = np.concatenate((id_rm, ind[ind2]))
-                        except:
-                            id_rm = ind[ind2]
+                ind = np.where(np.array(destinations) == dest_name)[0]
+                
+                D = dom.destinations[dest_name].distance[II[ind], JJ[ind]]-p[ind, 2]
+                # Test if people are close to their destination
+                ind2 = np.where(D <= thld)[0]
+                # print("     ",ind2," are close to their destination ",dest_name)
+                if (ind2.shape[0] > 0):
+                    # weight renormalization
+                    weight_sum = np.sum(dom.destinations[dest_name].next_destination_weights)
+                    if weight_sum<=0:
+                        raise ValueError(f"[micro people_update_destination] : !!! ERROR !!! \
+                            weights are not correct ! current destination = {dest_name}, \
+                            next destinations = {dom.destinations[dest_name].next_destination}, \
+                            next_destination_weights = {dom.destinations[dest_name].next_destination_weights} \
+                            ")
                     else:
-                        # People do not change domains, they juste change their
-                        # destination
-                        # print("     => change destination...")
-                        all_people[name]["destinations"][ind[ind2]] \
-                            = dom.destinations[dest_name].next_destination
-                else:  # in this case, we will only remove these persons...
-                    # print("     => remove...")
-                    try:
-                        id_rm = np.concatenate((id_rm, ind[ind2]))
-                    except:
-                        id_rm = ind[ind2]
+                        next_destination_normalized_weights = dom.destinations[dest_name].next_destination_weights/weight_sum
+                        ndest = len(dom.destinations[dest_name].next_destination)
+                        rng = all_people[name]["rng"]
+                        # if rng is None:
+                        #     rng = np.random.RandomState()
+                        #     print("** WARNING: NEW RandomState with seed = 0 **")
+                        next_destination_id = rng.choice(
+                            np.arange(ndest), 
+                            size=ind2.shape[0], 
+                            replace=True, p=next_destination_normalized_weights)
+                        next_destinations = [dom.destinations[dest_name].next_destination[i] for i in next_destination_id]
+                        next_domains = [dom.destinations[dest_name].next_domain[i] for i in next_destination_id]
+                        
+                        for inextdest in range(ndest):
+                            ind3 = np.where(next_destination_id==inextdest)[0]
+                            nextdest = dom.destinations[dest_name].next_destination[inextdest]
+                            if (nextdest is not None):
+                                next_domain = dom.destinations[dest_name].next_domain[inextdest]
+                                if (next_domain != name):
+                                    # In this case we have to copy these persons in their new
+                                    # domain, and then remove them
+                                    # update destination
+                                    all_people[name]["destinations"][ind[ind2[ind3]]] \
+                                        = nextdest
+                                    # move
+                                    if (all_people[next_domain]["xyrv"].shape[0]>0):
+                                        for key in PEOPLE_ARRAY_KEYS:
+                                            all_people[next_domain][key] = np.concatenate(
+                                                (all_people[next_domain][key],
+                                                all_people[name][key][ind[ind2[ind3]]]))
+                                    else:
+                                        for key in PEOPLE_ARRAY_KEYS:
+                                            all_people[next_domain][key] = all_people[name][key][ind[ind2[ind3]]]
+                                            
+                                    # remove
+                                    try:
+                                        id_rm = np.concatenate((id_rm,ind[ind2[ind3]]))
+                                    except Exception:
+                                        id_rm = ind[ind2[ind3]]
 
-        if (id_rm is not None):
-            for key in all_people[name]:
-                try:
-                    if (all_people[name][key].shape[0] == p.shape[0]):
-                        all_people[name][key] \
-                            = np.delete(all_people[name][key], id_rm, 0)
-                except:
-                    pass
+                                elif (dom.destinations[dest_name].next_transit_box[inextdest] is not None):
+                                    # next_domain == domain BUT a transit box + a shift are defined
+                                    # print("people before shift : ", all_people[name]["xyrv"][ind[ind2]])
+                                    all_people[name]["xyrv"][ind[ind2[ind3]],0] += dom.destinations[dest_name].next_transit_box_xshift[inextdest]
+                                    all_people[name]["xyrv"][ind[ind2[ind3]],1] += dom.destinations[dest_name].next_transit_box_yshift[inextdest]
+                                    # print("people after shift : ", all_people[name]["xyrv"][ind[ind2]])
+                                    all_people[name]["destinations"][ind[ind2[ind3]]] \
+                                        = nextdest       
+                                else:
+                                    # People do not change domains, they juste change their
+                                    # destination
+                                    #print("     => change destination...")
+                                    _LOGGER.info(
+                                        "people_update_destination: people who don't change domains, "
+                                        f"just destinations => ids={all_people[name]["id"][ind[ind2[ind3]]]}, "
+                                        f"xy={all_people[name]["id"][ind[ind2[ind3]]]}"
+                                    )
+                                    all_people[name]["destinations"][ind[ind2[ind3]]] \
+                                        = nextdest    
+                            else: ## in this case, we will only remove these persons...
+                                #print("     => remove...")
+                                try:
+                                    id_rm = np.concatenate((id_rm,ind[ind2[ind3]]))
+                                except Exception:
+                                    id_rm = ind[ind2[ind3]]
+
+            if (id_rm is not None):
+                for key in all_people[name]:
+                    try:
+                        if (all_people[name][key].shape[0] == p.shape[0]):
+                            all_people[name][key] \
+                                = np.delete(all_people[name][key], id_rm, 0)
+                    except Exception as e:
+                        # print(f"!! warning !! Failed to reduce '{key}', error = {e}")
+                        pass
 
     return all_people
 
 
-def sensor(door, xy0, xy1, t0, t1):
-    """
-    Compute the number of entries/exits through a door as a pedestrian
-    sensor could do
+def sensor(door, xy0, xy1, t0, t1, dist_in, dist_out):
+    """Detect pedestrian crossings of a line segment sensor.
+
+    The pedestrian trajectory during ``[t0, t1]`` is approximated by a segment.
+    The function computes intersections with the sensor segment, crossing
+    directions, approximate crossing times and pedestrians currently located
+    near either side of the sensor.
 
     Parameters
     ----------
-    door: numpy array
-        door coordinates ``[x0,y0,x1,y1]``
-    t0: float
-        time
-    t1: float
-        time
-    xy0: numpy array
-        people coordinates at time ``t0``
-    xy1: numpy array
-        people coordinates at time ``t1``
+    door : array-like, shape (4,)
+        Sensor segment coordinates ``[x0, y0, x1, y1]``.
+    xy0 : numpy.ndarray, shape (n_people, 2)
+        Pedestrian positions at time ``t0``.
+    xy1 : numpy.ndarray, shape (n_people, 2)
+        Pedestrian positions at time ``t1``.
+    t0 : float
+        Initial time.
+    t1 : float
+        Final time.
+    dist_in : float
+        Maximum distance used to identify pedestrians on the entry side.
+    dist_out : float
+        Maximum distance used to identify pedestrians on the exit side.
 
     Returns
     -------
-    id: numpy array
-        index of persons who go through the door
-    p: numpy array
-        coordinates of intersection points between the door and people trajectories
-    io: numpy array
-        the exit direction is the normal direction, 1 = exit, -1 = entry
-    times: numpy array
-        exit or entry times
-    entries: int
-        number of entries
-    exits: int
-        number of exits
+    id : numpy.ndarray
+        Indices of pedestrians crossing the sensor.
+    p : numpy.ndarray
+        Intersection points for crossing pedestrians.
+    io : numpy.ndarray
+        Crossing directions: ``1`` for exits and ``-1`` for entries.
+    times : numpy.ndarray
+        Estimated crossing times.
+    entries : int
+        Number of entries.
+    exits : int
+        Number of exits.
+    id_people_in : numpy.ndarray
+        Indices of pedestrians near the entry side.
+    id_people_out : numpy.ndarray
+        Indices of pedestrians near the exit side.
     """
     #
     #   trajectories:
     #               xy0
-    #                |
+    #                |       id_people_in    
     #                 |
     #   door:     d0--p--d1
-    #                   |
+    #                   |    id_people_out 
     #                   xy1
     d0 = np.empty(xy0.shape)
     d0[:, 0] = door[0]
@@ -1127,6 +2176,19 @@ def sensor(door, xy0, xy1, t0, t1):
     io = (is_normal_dir[id])*1+(is_normal_dir[id] is False)*(-1)
     exits = np.sum(io == 1)
     entries = np.sum(io == -1)
+    # Find people close to the sensor in the direction of the inputs (before the sensor)
+    # and find people close to the sensor in the direction of the outputs (after the sensor)
+    # print("door :",door)
+    vtraj_to_sensor = np.atleast_2d(0.5*(d0+d1)-xy1)
+    # print("vtraj_to_sensor :", vtraj_to_sensor)
+    dist_to_sensor = np.linalg.norm(vtraj_to_sensor, axis=1)
+    # print("dist_to_sensor :", dist_to_sensor)
+    dot_vn_vtraj_to_sensor = np.sum(vn*vtraj_to_sensor, axis=1)
+    # print("dot_vn_vtraj_to_sensor :", dot_vn_vtraj_to_sensor)
+    all_io = (dot_vn_vtraj_to_sensor>0)*1+(dot_vn_vtraj_to_sensor<=0)*(-1)
+    # print("all_io :", all_io)
+    id_people_in  = np.where((all_io ==  1)*(dist_to_sensor<=dist_in))[0]
+    id_people_out = np.where((all_io == -1)*(dist_to_sensor<=dist_out))[0]
     # Compute the distance from the intersection point p to xy0
     norm_vpxy0_2 = np.sqrt(np.sum(vpxy0 * vpxy0, axis=1))
     # Compute the distance from the intersection point p to xy1
@@ -1137,250 +2199,5 @@ def sensor(door, xy0, xy1, t0, t1):
     dt = t1-t0
     times = t0 + (is_normal_dir)*(norm_vpxy0_2*dt/norm_vtraj) + \
         (is_normal_dir is False)*(norm_vpxy1_2*dt/norm_vtraj)
-    return id, p[id, :], io, times[id], entries, exits
+    return id, p[id, :], io, times[id], entries, exits, id_people_in, id_people_out
 
-
-def plot_people(ifig, dom, people, contacts, colors, time=-1, axis=None,
-                virtual_people=None, plot_people=True, plot_contacts=True,
-                plot_velocities=False, plot_desired_velocities=False,
-                plot_paths=False, plot_sensors=False,
-                sensors=[], savefig=False, filename='fig.png', dpi=150,
-                cmap='winter'):
-    """
-    This function draws spheres for the individuals, \
-    lines for the active contacts and arrows for the \
-    (desired or real) velocities.
-
-    Parameters
-    ----------
-    ifig: int
-        figure number
-    dom: Domain
-        contains everything for managing the domain
-    people: dict
-        contains everything concerning people: ``x, y, r, v, U,...``
-    contacts: numpy array
-        all the contacts: ``i, j, dij, eij_x, eij_y``
-    colors: numpy array
-        scalar field used to define people colors
-    time: float
-        time in seconds
-    virtual_people: dict
-        contains everything concerning virtual people: ``x, y, r,...``
-    axis: numpy array
-        matplotlib axis: ``[xmin, xmax, ymin, ymax]``
-    plot_people: boolean
-        draws spheres for people if true
-    plot_paths: boolean
-        draws people paths if true
-    plot_sensors: boolean
-        draws sensor lines if true
-    sensors: numpy array
-        sensor line coordinates (see also the sensor function below)
-    savefig: boolean
-        writes the figure as a png file if true
-    filename: string
-        png filename used to write the figure
-    dpi: integer
-        number of pixel per inch for the saved figure
-    cmap: string
-        matplotlib colormap name
-    """
-    fig = plt.figure(ifig)
-    plt.clf()
-    ax1 = fig.add_subplot(111)
-    # Domain
-    ax1.imshow(dom.image, interpolation='nearest',
-               extent=[dom.xmin, dom.xmax, dom.ymin, dom.ymax], origin='lower')
-    if (plot_people):
-        try:
-            # People
-            offsets = people["xyrv"][:, :2]
-            ec = EllipseCollection(widths=2*people["xyrv"][:, 2],
-                                   heights=2*people["xyrv"][:, 2],
-                                   angles=0, units='xy',
-                                   cmap=plt.get_cmap(cmap),
-                                   offsets=offsets, transOffset=ax1.transData)
-            ec.set_array(colors)
-            ax1.add_collection(ec)
-        except:
-            pass
-        try:
-            # Virtual people
-            offsets = virtual_people["xyrv"][:, :2]
-            ecv = EllipseCollection(widths=2*virtual_people["xyrv"][:, 2],
-                                    heights=2*virtual_people["xyrv"][:, 2],
-                                    angles=0, units='xy',
-                                    facecolors='black',
-                                    alpha=0.5,
-                                    offsets=offsets, transOffset=ax1.transData)
-            ax1.add_collection(ecv)
-        except:
-            pass
-    if (plot_contacts):
-        try:
-            if (virtual_people["xyrv"] is not None):
-                xyrv = np.concatenate((people["xyrv"], virtual_people["xyrv"]))
-            else:
-                xyrv = people["xyrv"]
-            # Contacts
-            Nc = contacts.shape[0]
-            if (Nc > 0):
-                for ic in np.arange(Nc):
-                    i = np.int64(contacts[ic, 0])
-                    j = np.int64(contacts[ic, 1])
-                    if (j != -1):
-                        line = Line2D([xyrv[i, 0], xyrv[j, 0]],
-                                      [xyrv[i, 1], xyrv[j, 1]],
-                                      lw=1., alpha=0.6, color='k')
-                    else:
-                        line = Line2D([xyrv[i, 0],
-                                       xyrv[i, 0] - (xyrv[i, 2] + contacts[ic, 2])*contacts[ic, 3]],
-                                      [xyrv[i, 1],
-                                       xyrv[i, 1] - (xyrv[i, 2] + contacts[ic, 2])*contacts[ic, 4]],
-                                      lw=1., alpha=0.6, color='k')
-                    ax1.add_line(line)
-        except:
-            pass
-    if (plot_velocities):
-        try:
-            # Velocities
-            Np = people["xyrv"].shape[0]
-            for ip in np.arange(Np):
-                arrow = Arrow(people["xyrv"][ip, 0],
-                              people["xyrv"][ip, 1],
-                              people["U"][ip, 0],
-                              people["U"][ip, 1],
-                              width=0.3, color="red")
-                ax1.add_patch(arrow)
-            if (virtual_people["xyrv"] is not None):
-                Np = virtual_people["xyrv"].shape[0]
-                for ip in np.arange(Np):
-                    arrow = Arrow(virtual_people["xyrv"][ip, 0],
-                                  virtual_people["xyrv"][ip, 1],
-                                  virtual_people["U"][ip, 0],
-                                  virtual_people["U"][ip, 1],
-                                  width=0.3, color="red", alpha=0.6)
-                    ax1.add_patch(arrow)
-        except:
-            pass
-    if (plot_desired_velocities):
-        try:
-            # Velocities
-            Np = people["xyrv"].shape[0]
-            for ip in np.arange(Np):
-                arrow = Arrow(people["xyrv"][ip, 0],
-                              people["xyrv"][ip, 1],
-                              people["Vd"][ip, 0],
-                              people["Vd"][ip, 1],
-                              width=0.3, color="blue")
-                ax1.add_patch(arrow)
-            if (virtual_people["xyrv"] is not None):
-                Np = virtual_people["xyrv"].shape[0]
-                for ip in np.arange(Np):
-                    arrow = Arrow(virtual_people["xyrv"][ip, 0],
-                                  virtual_people["xyrv"][ip, 1],
-                                  virtual_people["Vd"][ip, 0],
-                                  virtual_people["Vd"][ip, 1],
-                                  width=0.3, color="blue", alpha=0.6)
-                    ax1.add_patch(arrow)
-        except:
-            pass
-    if (plot_paths):
-        pathlines = []
-        for ip, pid in enumerate(people["paths"]):
-            pathlines.append(np.reshape(people["paths"][pid], (-1, 2)))
-        pathlinecoll = LineCollection(pathlines, color="black",
-                                      linewidths=0.5, linestyle="solid", alpha=0.5,
-                                      cmap=plt.get_cmap(cmap))
-        # pathlinecoll.set_array(colors)
-        ax1.add_collection(pathlinecoll)
-    if (plot_sensors):
-        for ss in sensors:
-            line = Line2D(ss["line"][::2], ss["line"][1::2],
-                          lw=1., alpha=0.6, color='g')
-            ax1.add_line(line)
-    if (axis):
-        ax1.set_xlim(axis[0], axis[1])
-        ax1.set_ylim(axis[2], axis[3])
-    ax1.set_xticks([])
-    ax1.set_yticks([])
-    ax1.axis('off')
-    if (time >= 0):
-        ax1.set_title('time = {:.2F}'.format(time)+' s')
-    fig.canvas.draw()
-    if (savefig):
-        fig.savefig(filename, dpi=dpi, bbox_inches='tight', pad_inches=0)
-
-
-def plot_sensors(ifig, sensors, time, flux_timestep=1, savefig=False,
-                 filename='fig.png', dpi=150, cmap='winter'):
-    """
-
-    This function traces, for each sensor, a graph with the passage times
-    of the individuals crossing the counting line, as well as the incoming
-    and outgoing flows.
-
-    Parameters
-    ----------
-
-    ifig: int
-        figure number
-    sensors: dict
-        contains for each sensor, the date, position and direction of an
-        individual who cut the counting line
-    time: float
-        time in seconds
-    flux_timestep: float
-        timestep for the fluxes: number of persons per flux_timestep seconds
-    savefig: boolean
-        writes the figure as a png file if true
-    filename: string
-        png filename used to write the figure
-    dpi: integer
-        number of pixel per inch for the saved figure
-    cmap: string
-        matplotlib colormap name
-    """
-    tmin = 0
-    tmax = time
-
-    Ns = len(sensors)
-    if (Ns > 0):
-        fig = plt.figure(ifig)
-        # ncol = np.floor(np.sqrt(Ns))
-        # nrow = np.ceil(Ns / ncol)
-        ncol = 2
-        nrow = Ns
-        for i, s in enumerate(sensors):
-            name = s["name"]  # sensor name
-            tt = np.array(s["times"])
-            dir = np.array(s["dir"])
-            Np = tt.shape[0]
-            ax1 = fig.add_subplot(nrow, ncol, 2*i+1)
-            ax1.plot(np.arange(Np), tt, 'b+')
-            ax1.set_title(name+": crossing times (s)", fontsize="small")
-
-            tgrid = np.arange(tmin, tmax, step=flux_timestep)
-            tgrid = np.append(tgrid, tgrid[-1]+flux_timestep)
-            flux_exits = np.zeros(tgrid.shape)
-            flux_entries = np.zeros(tgrid.shape)
-            exits = np.where(dir == 1)[0]
-            entries = np.where(dir == -1)[0]
-            t_exits = np.ceil((tt[exits]-tmin)/flux_timestep)
-            t_entries = np.ceil((tt[entries]-tmin)/flux_timestep)
-            # t_exits = np.floor((tt[exits]-tmin)/flux_timestep)
-            # t_entries = np.floor((tt[entries]-tmin)/flux_timestep)
-            unique_exits, counts_exits = np.unique(t_exits, return_counts=True)
-            unique_entries, counts_entries = np.unique(t_entries, return_counts=True)
-            flux_exits[unique_exits.astype(int)] = counts_exits
-            flux_entries[unique_entries.astype(int)] = counts_entries
-            ax2 = fig.add_subplot(nrow, ncol, 2*i+2)
-            ax2.plot(tgrid, flux_entries, ':og',
-                     tgrid, flux_exits, ':or')
-            ax2.set_title(name + ": entries (green) and exits (red) per " +
-                          str(flux_timestep)+"s", fontsize="small")
-        fig.set_tight_layout(True)
-        fig.canvas.draw()
-        if (savefig):
-            fig.savefig(filename, dpi=dpi)

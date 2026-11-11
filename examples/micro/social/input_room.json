@@ -9,15 +9,15 @@
       "wall_colors":[ [0,0,0] ],
       "shape_lines":[
         {
-          "xx": [17.0,23.0],
-          "yy": [3.1,3.1],
+          "xx": [12.0,28.0],
+          "yy": [0.1,0.1],
           "linewidth": 2,
           "outline_color": [255,0,0],
           "fill_color": [255,0,0]
         },
         {
-          "xx": [17.0,23.0],
-          "yy": [27.02,27.02],
+          "xx": [12.0,28.0],
+          "yy": [29.9,29.9],
           "linewidth": 2,
           "outline_color": [0,255,0],
           "fill_color": [0,255,0]
@@ -45,9 +45,12 @@
           "excluded_colors":[ [0,0,0] ],
           "desired_velocity_from_color":[],
           "velocity_scale": 1,
-          "next_destination": null,
-          "next_domain": null,
-          "next_transit_box":null
+          "next_destination":         [null], 
+          "next_domain":              [null], 
+          "next_destination_weights": [1.0], 
+          "next_transit_box":         [null], 
+          "next_transit_box_xshift":  [0.0], 
+          "next_transit_box_yshift":  [0.0]
         },
         {
           "name": "green_door",
@@ -55,9 +58,12 @@
           "excluded_colors":[ [0,0,0] ],
           "desired_velocity_from_color":[],
           "velocity_scale": 1,
-          "next_destination": null,
-          "next_domain": null,
-          "next_transit_box":null
+          "next_destination":         [null], 
+          "next_domain":              [null], 
+          "next_destination_weights": [1.0], 
+          "next_transit_box":         [null], 
+          "next_transit_box_xshift":  [0.0], 
+          "next_transit_box_yshift":  [0.0] 
         }
       ]
     }
@@ -67,40 +73,40 @@
       "domain": "room",
       "groups": [
         {
-          "nb": 20,
+          "flux_per_minute":false,
+          "nb": 40,
           "radius_distribution": ["uniform",0.4,0.6],
           "velocity_distribution": ["normal",1.2,0.1],
+          "viewing_angle_distribution": ["uniform",40,60], 
+          "mass_distribution": ["uniform",100.0,100.0], 
+          "with_frustration": true, 
           "box": [3.6,36.5,3.6,26.5],
+          "color_for_positions": [],
           "destination": "red_door"
         },
         {
-          "nb": 20,
+          "flux_per_minute":false,
+          "nb": 40,
           "radius_distribution": ["uniform",0.4,0.6],
           "velocity_distribution": ["normal",1.2,0.1],
+          "viewing_angle_distribution": ["uniform",40,60], 
+          "mass_distribution": ["uniform",100.0,100.0], 
+          "with_frustration": false,
           "box": [3.6,36.5,3.6,26.5],
+          "color_for_positions": [],
           "destination": "green_door"
         }
       ]
     }
   ],
   "sensors":[
-    {
-      "name": "sensor1",
-      "domain": "room",
-      "line": [10.0,4.5,30.0,4.5]
-    },
-    {
-      "name": "sensor2",
-      "domain": "room",
-      "line": [10.0,25.5,30.0,25.5]
-    }
   ],
   "prefix":"results/",
   "seed":40,
   "with_graphes": true,
-  "Tf":25.0,
+  "Tf":50.0,
   "dt":0.005,
-  "drawper":100,
+  "plot_period":100,
   "mass":80.0,
   "tau":0.5,
   "F":2000.0,
@@ -113,10 +119,14 @@
   "dmax":0.1,
   "dmin_people":0.0,
   "dmin_walls":0.0,
+  "frustration_memory_size": 10,
+  "plot_module":"matplotlib",
   "plot_people":true,
-  "plot_contacts":false,
-  "plot_desired_velocities":false,
-  "plot_velocities":false,
+  "plot_contacts":true,
+  "plot_desired_velocities":true,
+  "plot_velocities":true,
   "plot_paths":true,
-  "plot_sensors":false
+  "plot_sensors":false,
+  "plot_velocity_reference": 1.0,
+  "plot_velocity_arrow_length": 1.5
 }

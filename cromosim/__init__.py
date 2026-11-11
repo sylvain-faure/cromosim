@@ -44,4 +44,10 @@ try:
 except Exception as error:
     print("cromosim.micro ==> an exception occurred on the 'micro' module:", error)
 
+try:
+    from . import visu
+    # print("cromosim.visu ==> 'visu' module is ok")
+except Exception as error:
+    print("cromosim.visu ==> an exception occurred on the 'visu' module:", error)
+
 name = "cromosim"

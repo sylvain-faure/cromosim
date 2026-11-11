@@ -16,14 +16,10 @@
           "fill_color": [255,0,0]
         }
       ],
-      "shape_circles":[
-      ],
-      "shape_ellipses":[
-      ],
-      "shape_rectangles":[
-      ],
-      "shape_polygons":[
-      ],
+      "shape_circles":[],
+      "shape_ellipses":[],
+      "shape_rectangles":[],
+      "shape_polygons":[],
       "destinations":[
         {
           "name": "door",
@@ -31,9 +27,12 @@
           "excluded_colors":[ [0,0,0] ],
           "desired_velocity_from_color":[],
           "velocity_scale": 1,
-          "next_destination": null,
-          "next_domain": null,
-          "next_transit_box":null
+          "next_destination":         [null], 
+          "next_domain":              [null], 
+          "next_destination_weights": [1.0], 
+          "next_transit_box":         [null], 
+          "next_transit_box_xshift":  [0.0], 
+          "next_transit_box_yshift":  [0.0]
         }
       ]
     }
@@ -43,17 +42,27 @@
       "domain": "event",
       "groups": [
         {
+          "flux_per_minute": false,
           "nb": 100,
           "radius_distribution": ["uniform",0.14,0.16],
           "velocity_distribution": ["normal",1.4,0.4],
+          "viewing_angle_distribution": ["uniform",40,60], 
+          "mass_distribution": ["uniform",100.0,100.0], 
+          "with_frustration": false,
           "box": [20.1,31.06,0.1,15.28],
+          "color_for_positions": [],
           "destination": "door"
         },
         {
+          "flux_per_minute": false,
           "nb": 100,
           "radius_distribution": ["uniform",0.14,0.16],
           "velocity_distribution": ["normal",1.4,0.4],
+          "viewing_angle_distribution": ["uniform",40,60], 
+          "mass_distribution": ["uniform",100.0,100.0], 
+          "with_frustration": false,
           "box": [0.1,11.06,0.1,15.28],
+          "color_for_positions": [],
           "destination": "door"
         }
       ]
@@ -63,12 +72,16 @@
     {
       "name": "sensor1",
       "domain": "event",
-      "line": [21.18,16.53,18.59,15.62]
+      "line": [21.18,16.53,18.59,15.62],
+      "dist_in": 0.0,
+      "dist_out": 0.0
     },
     {
       "name": "sensor2",
       "domain": "event",
-      "line": [13.28,20.88,11.32,21.94]
+      "line": [13.28,20.88,11.32,21.94],
+      "dist_in": 0.0,
+      "dist_out": 0.0
     }
   ],
   "prefix":"results/",
@@ -76,7 +89,6 @@
   "with_graphes": true,
   "Tf":50.0,
   "dt":0.005,
-  "drawper":200,
   "mass":80.0,
   "tau":0.5,
   "F":2000.0,
@@ -89,10 +101,15 @@
   "dmax":0.1,
   "dmin_people":0.0,
   "dmin_walls":0.0,
+  "frustration_memory_size": 10,
+  "plot_module":"matplotlib",
+  "plot_period":200,
   "plot_people":true,
   "plot_contacts":false,
   "plot_desired_velocities":false,
   "plot_velocities":false,
   "plot_paths":false,
-  "plot_sensors":true
+  "plot_sensors":true,
+  "plot_velocity_reference": 1.0,
+  "plot_velocity_arrow_length": 1.5
 }
