@@ -219,7 +219,7 @@ for domain_index, domain_config in enumerate(domain_configs):
                 destination_config["name"], 
                 id=100*domain_index+10+destination_index, 
                 step=20,
-                title=f"Destination '{destination_config["name"]}' "
+                title=f"Destination '{destination_config['name']}' "
                       f"in '{name}' domain")
      
     if (config["with_graphes"]):
@@ -247,8 +247,8 @@ for sensor_config in config["sensors"]:
     sensor["xy"] = []
     sensor["dir"] = []
     LOGGER.info(
-        f"Initializing the '{sensor["name"]}' sensor "
-        f"located in the '{sensor["domain"]}' domain")
+        f"Initializing the '{sensor['name']}' sensor "
+        f"located in the '{sensor['domain']}' domain")
     all_sensors[sensor["domain"]].append(sensor)
 
 
@@ -285,7 +285,7 @@ for people_index, people_config in enumerate(config["people_init"]):
     )
     if people is None:
         raise RuntimeError(
-            f"No population was created for domain {domain_name!r}."
+            f"No population was created for domain {domain_name}."
         )
     else:
         all_people[domain_name] = people
@@ -301,7 +301,7 @@ for domain_index, (name, domain) in enumerate(domains.items()):
 
     LOGGER.info(
         f"Creating the view vindow for the '{domain_name}' domain "
-        f"(render={config["plot_module"]})"
+        f"(render={config['plot_module']})"
     )
     
     if not config["with_graphes"]:
@@ -444,7 +444,7 @@ while (t < Tf):
         if people_to_add is not None: 
             LOGGER.info(
                 f"People flow in the '{domain_name}' domain: "
-                f"number of people added = {people_to_add["xyrv"].shape[0]}"
+                f"number of people added = {people_to_add['xyrv'].shape[0]}"
             )
             append_people(all_people[domain_name], people_to_add)
                             
@@ -485,7 +485,7 @@ while (t < Tf):
         if virtual_people[name]["xyrv"] is not None:
             LOGGER.info(
                         f"Projection step for the '{name}' domain: "
-                        f"{virtual_people[name]["xyrv"].shape[0]} "
+                        f"{virtual_people[name]['xyrv'].shape[0]} "
                         f"virtual guys found"
                     )
             xyrv = np.concatenate(
@@ -606,7 +606,7 @@ while (t < Tf):
     for domain_index, (name, domain) in enumerate(domains.items()):
         LOGGER.info(
             f"--- Number of persons in the '{name}' "
-            f"domain: {all_people[name]["xyrv"].shape[0]}"
+            f"domain: {all_people[name]['xyrv'].shape[0]}"
         )    
 
     if (cc >= config["plot_period"]):

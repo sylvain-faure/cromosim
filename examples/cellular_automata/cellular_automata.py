@@ -286,7 +286,7 @@ for destination_index, destination_config in enumerate(
         destination_config["name"], 
         id=10+destination_index, 
         step=20,
-        title=f"Destination '{destination_config["name"]}' "
+        title=f"Destination '{destination_config['name']}' "
                 f"in '{name}' domain")
     
     domain.plot(
