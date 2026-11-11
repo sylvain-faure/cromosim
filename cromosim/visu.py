@@ -27,7 +27,7 @@ from PIL import Image
 
 import matplotlib
 import matplotlib.pyplot as plt
-from matplotlib.patches import Circle, Ellipse, Rectangle, Polygon
+from matplotlib.patches import Arrow, Circle, Ellipse, Rectangle, Polygon
 from matplotlib.lines import Line2D
 from matplotlib.collections import LineCollection, EllipseCollection
 
