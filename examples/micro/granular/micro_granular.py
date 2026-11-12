@@ -107,7 +107,7 @@ domain_configs = config["domains"]
 for domain_index, domain_config in enumerate(domain_configs):
     name = domain_config["name"]
     LOGGER.info(f"Start building domain {domain_index}: {name}")
-    if domain_config["background"] == "":
+    if domain_config["background"] == "White":
         domain = Domain(
             name=name,
             pixel_size=domain_config["px"],
@@ -449,7 +449,7 @@ while (t < Tf):
             append_people(all_people[domain_name], people_to_add)
                             
  
-     # Compute people desired velocity
+    # Compute people desired velocity
      
     for domain_index, (name, domain) in enumerate(domains.items()):
         LOGGER.info(
